@@ -1,7 +1,7 @@
 package: symfony_mailer
 version: '1.0.0-dev'
-author: REDAXO Team
-supportpage: https://github.com/redaxo/redaxo
+author: Friends of REDAXO 
+supportpage: https://github.com/FriendsOfREDAXO/symfony_mailer/
 
 page:
     title: 'translate:title'
