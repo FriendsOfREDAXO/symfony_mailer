@@ -16,6 +16,9 @@ Dieses REDAXO AddOn integriert den Symfony Mailer, um E-Mails aus REDAXO-Projekt
 -   **Testverbindung:** Testfunktion, um die SMTP-Verbindung zu überprüfen, auch mit benutzerdefinierten Einstellungen.
 -   **Einfache Bedienung:** Intuitive Konfiguration im REDAXO-Backend.
 -   **Flexibilität:** Unterstützung für verschiedene SMTP Server mit dynamischen Einstellungen pro Mail.
+-   **HTML E-Mails:** Unterstützung für den Versand von HTML-formatierten E-Mails.
+-   **Attachments:** Unterstützung für das Anhängen von Dateien an E-Mails.
+-    **Inline-Bilder:** Möglichkeit, Bilder direkt in den HTML-Inhalt der E-Mail einzubetten.
 
 ## Installation
 
@@ -201,6 +204,36 @@ if ($testResult['success']) {
 }
 ```
 
+**Beispiel 6: E-Mail mit HTML-Inhalt, Anhängen und Inline-Bildern senden:**
+
+```php
+<?php
+
+use FriendsOfRedaxo\SymfonyMailer\RexSymfonyMailer;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Part\DataPart;
+use Symfony\Component\Mime\Part\File;
+
+$mailer = new RexSymfonyMailer();
+$email = $mailer->createEmail();
+$email->to(new Address('empfaenger@example.com', 'Empfänger Name'))
+    ->subject('Test Mail mit HTML, Anhang und Inline-Bild')
+    ->html('<p>Dies ist eine <b>Test-E-Mail</b> mit <i>HTML</i>-Inhalt und einem Inline-Bild:</p>' .
+           '<img src="cid:inline-image" alt="Inline Bild">' ) //Verwendung von cid
+    ->addPart(new DataPart('Testdaten', 'text/plain', 'test.txt'))
+    ->addPart(new File('/path/to/your/file.pdf')) //Datei-Anhang
+    ->addPart(new DataPart(file_get_contents('/path/to/your/image.png'), 'image/png', 'inline-image'))
+    // Inline-Bild mit angepasster cid (Content-ID)
+
+// E-Mail mit HTML-Inhalt, Anhang und Inline-Bild senden
+if ($mailer->send($email)) {
+    echo "E-Mail mit HTML-Inhalt, Anhängen und Inline-Bild erfolgreich gesendet!";
+} else {
+    echo "E-Mail mit HTML-Inhalt, Anhängen und Inline-Bild konnte nicht gesendet werden.";
+    var_dump($mailer->getDebugInfo());
+}
+```
+
 ## Wichtige Hinweise
 
 -   Die Standard-SMTP- und IMAP-Einstellungen werden im AddOn-Konfigurationsbereich konfiguriert.
@@ -210,6 +243,45 @@ if ($testResult['success']) {
 -   Wenn Sie eigene SMTP Einstellungen übergeben, müssen Sie alle (host, port, security, username, password) angeben, sonst wird der Mailversand fehlschlagen.
 -   Wenn Sie einen eigenen IMAP Ordner übergeben, muss der Ordner auf dem IMAP Server vorhanden sein, sonst wird der Mailversand fehlschlagen.
 -   Fehler werden durch Symfony Exceptions abgefangen und in der `$debugInfo` Eigenschaft gespeichert.
+
+###  `DataPart` und `File` - Anhänge und Inline-Bilder im Detail
+    
+   Im Symfony Mailer, werden die E-Mail Anhänge nicht über ein Array von Datei-Pfaden übergeben, sondern mit Objekten der Klasse `DataPart` oder `File`. Dies ist ein wichtiger Unterschied zu PHPMailer, mit dem viele REDAXO-Nutzer vertraut sind.
+
+    -  **`DataPart`**: Repräsentiert einen E-Mail-Anhang, der aus Daten (z.B. einem String) erstellt wird, und nicht aus einer Datei. Das bedeutet, dass du Daten direkt in den Anhang einbetten kannst, ohne eine temporäre Datei auf der Festplatte anlegen zu müssen.
+
+       ```php
+       use Symfony\Component\Mime\Part\DataPart;
+
+       // Ein Text-Anhang:
+        new DataPart('Dies ist der Inhalt des Textanhangs.', 'text/plain', 'mytext.txt');
+
+        // Ein Inline-Bild (siehe unten):
+        new DataPart(file_get_contents('/pfad/zum/bild.png'), 'image/png', 'inline-image');
+        ```
+
+    -   **`File`**: Repräsentiert einen Anhang, der aus einer Datei auf der Festplatte erstellt wird. Das ist vergleichbar mit dem Anhängen von Dateien in PHPMailer, aber auch hier wird anstelle eines Dateipfades, ein File Objekt übergeben.
+
+         ```php
+         use Symfony\Component\Mime\Part\File;
+        new File('/pfad/zu/datei.pdf');
+         ```
+
+### Inline-Bilder mit `DataPart`
+
+   Um Inline-Bilder zu verwenden, werden die Bilder ebenfalls als `DataPart` hinzugefügt. Hier ist der Knackpunkt:
+
+    1.  **Einzigartige ID (`cid`):**
+        Du verwendest `cid:` (Content-ID) als URI im `<img>`-Tag (z.B. `<img src="cid:inline-image">`).
+    2. **`DataPart`:** Du erstellst eine `DataPart` Instanz mit den Bilddaten, dem Bildtyp und der gleichen ID als Dateiname.
+   3. **Zuordnung:** Der Mail Client verknüpft den String `inline-image` in deinem HTML mit dem korrespondierenden `DataPart` Objekt.
+   
+  ```php
+   $email->html('<img src="cid:inline-image" alt="Inline Bild">')
+   ->addPart(new DataPart(file_get_contents('/path/to/your/image.png'), 'image/png', 'inline-image'));
+   ```
+
+   In diesem Beispiel wird der Inhalt der Bilddatei `/path/to/your/image.png` als Inline-Bild an die E-Mail angehängt.
 
 ## Fehlerbehebung
 
@@ -222,3 +294,12 @@ if ($testResult['success']) {
 ## Lizenz
 
 Dieses AddOn ist unter der MIT-Lizenz lizenziert.
+
+## Beiträge
+
+Beiträge zum AddOn sind willkommen. Sie können Pull Requests auf GitHub einreichen.
+
+## Kontakt
+
+Bei Fragen oder Problemen können Sie sich an [Ihre E-Mail oder Ihren GitHub-Benutzernamen] wenden.
+
