@@ -17,12 +17,65 @@ if (rex_post('test_connection', 'boolean')) {
             $error = $result['message'];
             if (isset($result['debug']) && !empty($result['debug'])) {
                 $error .= '<br><br><strong>' . $addon->i18n('debug_info') . ':</strong><br>';
-                $error .= nl2br(rex_escape($result['debug']));
+                $error .= '<pre class="rex-debug">' . rex_escape(print_r($result['debug'], true)) . '</pre>';
             }
             echo rex_view::error($error);
         }
     } catch (\Exception $e) {
         echo rex_view::error($e->getMessage());
+    }
+}
+
+// Test IMAP connection
+if (rex_post('test_imap', 'boolean')) {
+    if (!$addon->getConfig('imap_archive')) {
+        echo rex_view::error($addon->i18n('imap_not_enabled'));
+    } else {
+        try {
+            $host = $addon->getConfig('imap_host');
+            $port = $addon->getConfig('imap_port', 993);
+            $username = $addon->getConfig('imap_username');
+            $password = $addon->getConfig('imap_password');
+            $folder = $addon->getConfig('imap_folder', 'Sent');
+            
+            $mailbox = sprintf('{%s:%d/imap/ssl}%s', $host, $port, $folder);
+            
+            // Set timeout for the connection attempt
+            imap_timeout(IMAP_OPENTIMEOUT, 10);
+            
+            // Try to connect
+            if ($connection = @imap_open($mailbox, $username, $password)) {
+                // Get mailbox info for additional debug data
+                $check = imap_check($connection);
+                $folders = imap_list($connection, sprintf('{%s:%d}', $host, $port), '*');
+                $status = imap_status($connection, $mailbox, SA_ALL);
+                
+                $debug = [
+                    'Connection' => 'Success',
+                    'Mailbox' => $mailbox,
+                    'Available folders' => $folders,
+                    'Messages in folder' => $check->Nmsgs,
+                    'Folder status' => [
+                        'messages' => $status->messages,
+                        'recent' => $status->recent,
+                        'unseen' => $status->unseen
+                    ]
+                ];
+                
+                imap_close($connection);
+                
+                echo rex_view::success(
+                    $addon->i18n('imap_connection_success') . 
+                    '<br><br><strong>' . $addon->i18n('debug_info') . ':</strong><br>' .
+                    '<pre class="rex-debug">' . rex_escape(print_r($debug, true)) . '</pre>'
+                );
+            } else {
+                $error = $addon->i18n('imap_connection_error') . '<br>' . imap_last_error();
+                echo rex_view::error($error);
+            }
+        } catch (\Exception $e) {
+            echo rex_view::error($addon->i18n('imap_connection_error') . '<br>' . $e->getMessage());
+        }
     }
 }
 
@@ -49,6 +102,10 @@ if (rex_post('test_mail', 'boolean')) {
             $body .= 'Port: ' . $addon->getConfig('port') . "\n";
             $body .= 'Security: ' . ($addon->getConfig('security') ?: 'none') . "\n";
             
+            if ($addon->getConfig('debug') > 0) {
+                $body .= 'Debug Level: ' . $addon->getConfig('debug') . "\n";
+            }
+            
             $email->text($body);
             
             if ($mailer->send($email)) {
@@ -58,7 +115,7 @@ if (rex_post('test_mail', 'boolean')) {
                 $error = $addon->i18n('test_mail_error');
                 if (!empty($debugInfo)) {
                     $error .= '<br><br><strong>' . $addon->i18n('debug_info') . ':</strong><br>';
-                    $error .= nl2br(rex_escape(print_r($debugInfo, true)));
+                    $error .= '<pre class="rex-debug">' . rex_escape(print_r($debugInfo, true)) . '</pre>';
                 }
                 echo rex_view::error($error);
             }
@@ -111,6 +168,16 @@ $field = $form->addTextField('password');
 $field->setLabel($addon->i18n('smtp_password'));
 $field->getAttributes()['type'] = 'password';
 
+$field = $form->addSelectField('debug');
+$field->setLabel($addon->i18n('smtp_debug'));
+$select = $field->getSelect();
+$select->addOption($addon->i18n('smtp_debug_disabled'), 0);
+$select->addOption($addon->i18n('smtp_debug_client'), 1);
+$select->addOption($addon->i18n('smtp_debug_server'), 2);
+$select->addOption($addon->i18n('smtp_debug_connection'), 3);
+$select->addOption($addon->i18n('smtp_debug_lowlevel'), 4);
+$field->setNotice($addon->i18n('smtp_debug_info'));
+
 // Log and Archive Settings Fieldset
 $form->addFieldset('Log & Archive');
 
@@ -152,56 +219,42 @@ $field->setNotice($addon->i18n('imap_folder_notice'));
 
 // Output form
 $fragment = new rex_fragment();
-$fragment->setVar('class', 'col-lg-8', false);
+$fragment->setVar('class', 'col-sm-8', false);
 $fragment->setVar('title', $addon->i18n('configuration'), false);
 $fragment->setVar('body', $form->get(), false);
 $content = $fragment->parse('core/page/section.php');
 
 // Test panel
-$testButtons = '
+$testContent = '
 <form action="' . rex_url::currentBackendPage() . '" method="post">
-    <button type="submit" name="test_connection" value="1" class="btn btn-primary">' . $addon->i18n('test_connection') . '</button>
-    <button type="submit" name="test_mail" value="1" class="btn btn-primary">' . $addon->i18n('test_mail_send') . '</button>
+    <div class="alert alert-info">
+        ' . $addon->i18n('test_info') . '
+    </div>
+    
+    <fieldset>
+        <legend>' . $addon->i18n('smtp_test') . '</legend>
+        <div class="form-group">
+            <button type="submit" name="test_connection" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_connection') . '</button>
+        </div>
+        <div class="form-group">
+            <button type="submit" name="test_mail" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_mail_send') . '</button>
+        </div>
+    </fieldset>
+
+    <fieldset class="imap-test">
+        <legend>' . $addon->i18n('imap_test') . '</legend>
+        <div class="form-group">
+            <button type="submit" name="test_imap" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_imap_connection') . '</button>
+        </div>
+    </fieldset>
 </form>';
 
 $fragment = new rex_fragment();
-$fragment->setVar('class', 'col-lg-4', false);
+$fragment->setVar('class', 'col-sm-4', false);
 $fragment->setVar('title', $addon->i18n('test_title'), false);
-$fragment->setVar('body', $testButtons, false);
+$fragment->setVar('body', $testContent, false);
 $sidebar = $fragment->parse('core/page/section.php');
 
 // Output complete page
 echo '<div class="row">' . $content . $sidebar . '</div>';
 ?>
-
-<script nonce="<?= rex_response::getNonce() ?>">
-    $(document).on('rex:ready', function() {
-        // Show/hide auth fields based on checkbox
-        function toggleAuthFields() {
-            if ($('#rex-symfony_mailer-auth').is(':checked')) {
-                $('#rex-symfony_mailer-username, #rex-symfony_mailer-password').closest('.form-group').show();
-            } else {
-                $('#rex-symfony_mailer-username, #rex-symfony_mailer-password').closest('.form-group').hide();
-            }
-        }
-
-        // Show/hide IMAP fields based on checkbox
-        function toggleImapFields() {
-            if ($('#rex-symfony_mailer-imap_archive').is(':checked')) {
-                $('#rex-symfony_mailer-imap_host, #rex-symfony_mailer-imap_port, #rex-symfony_mailer-imap_username, #rex-symfony_mailer-imap_password, #rex-symfony_mailer-imap_folder')
-                    .closest('.form-group').show();
-            } else {
-                $('#rex-symfony_mailer-imap_host, #rex-symfony_mailer-imap_port, #rex-symfony_mailer-imap_username, #rex-symfony_mailer-imap_password, #rex-symfony_mailer-imap_folder')
-                    .closest('.form-group').hide();
-            }
-        }
-
-        // Initial state
-        toggleAuthFields();
-        toggleImapFields();
-
-        // Bind change events
-        $('#rex-symfony_mailer-auth').change(toggleAuthFields);
-        $('#rex-symfony_mailer-imap_archive').change(toggleImapFields);
-    });
-</script>
