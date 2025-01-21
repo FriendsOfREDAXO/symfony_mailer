@@ -1,5 +1,5 @@
 package: symfony_mailer
-version: '1.0.0'
+version: '1.0.0-dev'
 author: REDAXO Team
 supportpage: https://github.com/redaxo/redaxo
 
