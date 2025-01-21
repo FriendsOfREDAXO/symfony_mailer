@@ -172,7 +172,7 @@ echo $fragment->parse('core/page/section.php');
 ?>
 
 <script nonce="<?= rex_response::getNonce() ?>">
-    rex_ready(function() {
+    $(document).on('rex:ready', function() {
         // Show/hide auth fields based on checkbox
         function toggleAuthFields() {
             if ($('#rex-form-auth').is(':checked')) {
