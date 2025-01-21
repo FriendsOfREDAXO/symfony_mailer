@@ -3,12 +3,14 @@ symfony_mailer_configuration = Konfiguration
 symfony_mailer_help = Hilfe
 symfony_mailer_logging = Log
 
+# Konfiguration
 symfony_mailer_sender_email = Absenderadresse
 symfony_mailer_sender_email_notice = Die E-Mail-Adresse von der alle E-Mails versendet werden
 symfony_mailer_test_address = Testadresse
 symfony_mailer_test_address_notice = An diese Adresse werden Test-E-Mails versendet
 symfony_mailer_sender_name = Absendername
 
+# SMTP Einstellungen
 symfony_mailer_smtp_title = SMTP-Einstellungen
 symfony_mailer_smtp_host = Host
 symfony_mailer_smtp_port = Port
@@ -19,10 +21,19 @@ symfony_mailer_smtp_auth = Authentifizierung
 symfony_mailer_smtp_auth_enabled = Authentifizierung aktivieren
 symfony_mailer_smtp_username = Benutzername
 symfony_mailer_smtp_password = Passwort
+symfony_mailer_smtp_debug = Debug-Level
+symfony_mailer_smtp_debug_disabled = Debug deaktiviert
+symfony_mailer_smtp_debug_client = Client-Protokoll
+symfony_mailer_smtp_debug_server = Server- und Client-Protokoll
+symfony_mailer_smtp_debug_connection = Verbindungsprotokoll
+symfony_mailer_smtp_debug_lowlevel = Detailliertes Protokoll
+symfony_mailer_smtp_debug_info = Je höher der Debug-Level, desto detaillierter die Informationen. Im Produktivbetrieb sollte Debug deaktiviert sein.
 
-symfony_mailer_test_connection = Verbindung testen
-symfony_mailer_test_connection_success = Verbindungstest erfolgreich
-symfony_mailer_test_connection_error = Verbindungstest fehlgeschlagen
+# Test-Panel
+symfony_mailer_test_title = Verbindungstests
+symfony_mailer_test_info = Hier können Sie die SMTP- und IMAP-Verbindungen testen und eine Test-E-Mail versenden. Die Debug-Informationen helfen bei der Fehlersuche.
+symfony_mailer_smtp_test = SMTP-Tests
+symfony_mailer_test_connection = SMTP-Verbindung testen
 symfony_mailer_test_mail_send = Test-E-Mail senden
 symfony_mailer_test_mail_no_addresses = Bitte Absender- und Testadresse konfigurieren
 symfony_mailer_test_mail_sent = Die Test-E-Mail wurde erfolgreich an {0} versendet
@@ -30,10 +41,29 @@ symfony_mailer_test_mail_error = Beim Versenden der Test-E-Mail ist ein Fehler a
 symfony_mailer_test_mail_default_subject = REDAXO Symfony Mailer Test
 symfony_mailer_test_mail_greeting = Hallo,
 symfony_mailer_test_mail_body = dies ist eine Test-E-Mail von der Website {0}.
+symfony_mailer_debug_info = Debug-Informationen
 
+# IMAP
+symfony_mailer_imap_title = IMAP-Archiv
+symfony_mailer_imap_archive = IMAP-Archivierung
+symfony_mailer_imap_archive_enabled = IMAP-Archivierung aktivieren
+symfony_mailer_imap_host = IMAP Server
+symfony_mailer_imap_port = IMAP Port
+symfony_mailer_imap_port_notice = Standard-Port: 993 (SSL)
+symfony_mailer_imap_username = IMAP Benutzername
+symfony_mailer_imap_password = IMAP Passwort
+symfony_mailer_imap_folder = IMAP Ordner
+symfony_mailer_imap_folder_notice = z.B. "INBOX.Sent" oder "Gesendet"
+symfony_mailer_imap_test = IMAP-Test
+symfony_mailer_test_imap_connection = IMAP-Verbindung testen
+symfony_mailer_imap_not_enabled = IMAP-Archivierung ist nicht aktiviert
+symfony_mailer_imap_connection_success = IMAP-Verbindung erfolgreich hergestellt
+symfony_mailer_imap_connection_error = IMAP-Verbindung fehlgeschlagen
+
+# Log/Archiv
 symfony_mailer_log_title = E-Mail Log
 symfony_mailer_log_title_with_file = E-Mail Log "{0}"
-symfony_mailer_logging = Protokollierung
+symfony_mailer_logging = E-Mail-Protokollierung
 symfony_mailer_log_disabled = Deaktiviert
 symfony_mailer_log_errors = Nur Fehler protokollieren
 symfony_mailer_log_all = Alles protokollieren
@@ -50,17 +80,5 @@ symfony_mailer_log_delete_confirm = Soll das Log wirklich gelöscht werden?
 symfony_mailer_log_deleted = Das Log wurde erfolgreich gelöscht
 symfony_mailer_log_delete_error = Das Log konnte nicht gelöscht werden
 
-symfony_mailer_imap_title = IMAP-Archiv
-symfony_mailer_imap_archive = IMAP-Archivierung
-symfony_mailer_imap_archive_enabled = IMAP-Archivierung aktivieren
-symfony_mailer_imap_host = IMAP Server
-symfony_mailer_imap_port = IMAP Port
-symfony_mailer_imap_port_notice = Standard-Port: 993 (SSL)
-symfony_mailer_imap_username = IMAP Benutzername
-symfony_mailer_imap_password = IMAP Passwort
-symfony_mailer_imap_folder = IMAP Ordner
-symfony_mailer_imap_folder_notice = z.B. "INBOX.Sent" oder "Gesendet"
-
-symfony_mailer_debug_info = Debug-Informationen
-
+# Rechte
 perm_general_symfony_mailer[] = Symfony Mailer Einstellungen
