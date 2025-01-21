@@ -1,0 +1,12 @@
+{
+    "require": {
+        "symfony/mailer": "^7.0",
+        "symfony/mime": "^7.0"
+    },
+    "config": {
+        "platform": {
+            "php": "8.2.0"
+        },
+        "platform-check": false
+    }
+}
