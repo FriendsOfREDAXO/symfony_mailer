@@ -5,31 +5,37 @@ use Symfony\Component\Mime\Email;
 
 $addon = rex_addon::get('symfony_mailer');
 
+// --- Funktionen für Testausgaben ---
+function outputTestResult($message, $success = true, $debug = null)
+{
+    if ($success) {
+        echo rex_view::success($message);
+    } else {
+        $error = $message;
+        if (isset($debug) && !empty($debug)) {
+            $error .= '<br><br><strong>' . rex_i18n::msg('debug_info') . ':</strong><br>';
+            $error .= '<pre class="rex-debug">' . rex_escape(print_r($debug, true)) . '</pre>';
+        }
+        echo rex_view::error($error);
+    }
+}
+
 // Handle test connection
 if (rex_post('test_connection', 'boolean')) {
     try {
         $mailer = new RexSymfonyMailer();
         $result = $mailer->testConnection();
         
-        if ($result['success']) {
-            echo rex_view::success($result['message']);
-        } else {
-            $error = $result['message'];
-            if (isset($result['debug']) && !empty($result['debug'])) {
-                $error .= '<br><br><strong>' . $addon->i18n('debug_info') . ':</strong><br>';
-                $error .= '<pre class="rex-debug">' . rex_escape(print_r($result['debug'], true)) . '</pre>';
-            }
-            echo rex_view::error($error);
-        }
+        outputTestResult($result['message'], $result['success'], $result['debug'] ?? null);
     } catch (\Exception $e) {
-        echo rex_view::error($e->getMessage());
+        outputTestResult($e->getMessage(), false);
     }
 }
 
 // Test IMAP connection
 if (rex_post('test_imap', 'boolean')) {
     if (!$addon->getConfig('imap_archive')) {
-        echo rex_view::error($addon->i18n('imap_not_enabled'));
+        outputTestResult($addon->i18n('imap_not_enabled'), false);
     } else {
         try {
             $host = $addon->getConfig('imap_host');
@@ -64,17 +70,17 @@ if (rex_post('test_imap', 'boolean')) {
                 
                 imap_close($connection);
                 
-                echo rex_view::success(
-                    $addon->i18n('imap_connection_success') . 
-                    '<br><br><strong>' . $addon->i18n('debug_info') . ':</strong><br>' .
-                    '<pre class="rex-debug">' . rex_escape(print_r($debug, true)) . '</pre>'
+                outputTestResult(
+                    $addon->i18n('imap_connection_success'),
+                    true,
+                    $debug
                 );
             } else {
                 $error = $addon->i18n('imap_connection_error') . '<br>' . imap_last_error();
-                echo rex_view::error($error);
+                outputTestResult($error, false);
             }
         } catch (\Exception $e) {
-            echo rex_view::error($addon->i18n('imap_connection_error') . '<br>' . $e->getMessage());
+            outputTestResult($addon->i18n('imap_connection_error') . '<br>' . $e->getMessage(), false);
         }
     }
 }
@@ -82,7 +88,7 @@ if (rex_post('test_imap', 'boolean')) {
 // Handle test mail
 if (rex_post('test_mail', 'boolean')) {
     if ('' == $addon->getConfig('from') || '' == $addon->getConfig('test_address')) {
-        echo rex_view::error($addon->i18n('test_mail_no_addresses'));
+        outputTestResult($addon->i18n('test_mail_no_addresses'), false);
     } else {
         try {
             $mailer = new RexSymfonyMailer();
@@ -109,19 +115,15 @@ if (rex_post('test_mail', 'boolean')) {
             $email->text($body);
             
             if ($mailer->send($email)) {
-                echo rex_view::success($addon->i18n('test_mail_sent', rex_escape($addon->getConfig('test_address'))));
+                outputTestResult($addon->i18n('test_mail_sent', rex_escape($addon->getConfig('test_address'))), true);
             } else {
                 $debugInfo = $mailer->getDebugInfo();
                 $error = $addon->i18n('test_mail_error');
-                if (!empty($debugInfo)) {
-                    $error .= '<br><br><strong>' . $addon->i18n('debug_info') . ':</strong><br>';
-                    $error .= '<pre class="rex-debug">' . rex_escape(print_r($debugInfo, true)) . '</pre>';
-                }
-                echo rex_view::error($error);
+                 outputTestResult($error, false, $debugInfo);
             }
             
         } catch (\Exception $e) {
-            echo rex_view::error($addon->i18n('test_mail_error') . '<br>' . $e->getMessage());
+             outputTestResult($addon->i18n('test_mail_error') . '<br>' . $e->getMessage(), false);
         }
     }
 }
@@ -219,7 +221,7 @@ $field->setNotice($addon->i18n('imap_folder_notice'));
 
 // Output form
 $fragment = new rex_fragment();
-$fragment->setVar('class', 'col-sm-8', false);
+$fragment->setVar('class', 'col-md-8', false); // Use col-md-8 for wider column
 $fragment->setVar('title', $addon->i18n('configuration'), false);
 $fragment->setVar('body', $form->get(), false);
 $content = $fragment->parse('core/page/section.php');
@@ -250,7 +252,7 @@ $testContent = '
 </form>';
 
 $fragment = new rex_fragment();
-$fragment->setVar('class', 'col-sm-4', false);
+$fragment->setVar('class', 'col-md-4', false); // Use col-md-4 for smaller sidebar
 $fragment->setVar('title', $addon->i18n('test_title'), false);
 $fragment->setVar('body', $testContent, false);
 $sidebar = $fragment->parse('core/page/section.php');
