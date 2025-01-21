@@ -1,2 +1,2 @@
-# symphony mailer for REDAXO cms
+# symfony mailer for REDAXO cms
 
