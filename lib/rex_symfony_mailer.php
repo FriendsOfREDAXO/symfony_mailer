@@ -13,6 +13,7 @@ use rex_path;
 use rex_i18n;
 use rex_log_file;
 use rex_file;
+use rex_dir;
 
 class RexSymfonyMailer 
 {
