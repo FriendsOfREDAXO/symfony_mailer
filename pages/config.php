@@ -175,20 +175,20 @@ echo $fragment->parse('core/page/section.php');
     $(document).on('rex:ready', function() {
         // Show/hide auth fields based on checkbox
         function toggleAuthFields() {
-            if ($('#rex-form-auth').is(':checked')) {
-                $('#rex-form-username, #rex-form-password').closest('.form-group').show();
+            if ($('#rex-symfony_mailer-auth').is(':checked')) {
+                $('#rex-symfony_mailer-username, #rex-symfony_mailer-password').closest('.form-group').show();
             } else {
-                $('#rex-form-username, #rex-form-password').closest('.form-group').hide();
+                $('#rex-symfony_mailer-username, #rex-symfony_mailer-password').closest('.form-group').hide();
             }
         }
 
         // Show/hide IMAP fields based on checkbox
         function toggleImapFields() {
-            if ($('#rex-form-imap-archive').is(':checked')) {
-                $('#rex-form-imap-host, #rex-form-imap-port, #rex-form-imap-username, #rex-form-imap-password, #rex-form-imap-folder')
+            if ($('#rex-symfony_mailer-imap_archive').is(':checked')) {
+                $('#rex-symfony_mailer-imap_host, #rex-symfony_mailer-imap_port, #rex-symfony_mailer-imap_username, #rex-symfony_mailer-imap_password, #rex-symfony_mailer-imap_folder')
                     .closest('.form-group').show();
             } else {
-                $('#rex-form-imap-host, #rex-form-imap-port, #rex-form-imap-username, #rex-form-imap-password, #rex-form-imap-folder')
+                $('#rex-symfony_mailer-imap_host, #rex-symfony_mailer-imap_port, #rex-symfony_mailer-imap_username, #rex-symfony_mailer-imap_password, #rex-symfony_mailer-imap_folder')
                     .closest('.form-group').hide();
             }
         }
@@ -198,7 +198,7 @@ echo $fragment->parse('core/page/section.php');
         toggleImapFields();
 
         // Bind change events
-        $('#rex-form-auth').change(toggleAuthFields);
-        $('#rex-form-imap-archive').change(toggleImapFields);
+        $('#rex-symfony_mailer-auth').change(toggleAuthFields);
+        $('#rex-symfony_mailer-imap_archive').change(toggleImapFields);
     });
 </script>
