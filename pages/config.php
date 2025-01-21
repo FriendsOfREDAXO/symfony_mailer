@@ -5,7 +5,7 @@ use Symfony\Component\Mime\Email;
 
 $addon = rex_addon::get('symfony_mailer');
 
-$form = new rex_config_form_enhanced('symfony_mailer');
+$form = rex_config_form_enhanced::factory('symfony_mailer');
 
 // SMTP Settings Fieldset
 $form->addFieldset('SMTP Settings');
