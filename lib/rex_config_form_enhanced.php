@@ -8,10 +8,10 @@ class rex_config_form_enhanced extends rex_config_form
     /**
      * Fügt einen zusätzlichen Button zum Formular hinzu.
      *
-     * @param string $name  Eindeutiger Name des Buttons.
-     * @param string $label Der angezeigte Text auf dem Button.
-     * @param array $attributes Zusätzliche Attribute.
-     * @param callable|null $callback Optionaler Callback der ausgeführt wird.
+     * @param string $name  Eindeutiger Name des Buttons
+     * @param string $label Text auf dem Button
+     * @param array $attributes Zusätzliche Attribute
+     * @param callable|null $callback Optionaler Callback der ausgeführt wird
      *
      * @return $this
      */
@@ -30,33 +30,30 @@ class rex_config_form_enhanced extends rex_config_form
     {
         parent::loadBackendConfig();
 
-
-          // Buttons hinzufügen
-         foreach ($this->buttons as $buttonName => $buttonData) {
-             $attr = array_merge(
-                 ['type' => 'submit', 'internal::useArraySyntax' => false, 'internal::fieldSeparateEnding' => true],
-                 $buttonData['attributes']
-             );
+        // Buttons hinzufügen
+        foreach ($this->buttons as $buttonName => $buttonData) {
+            $attr = array_merge(
+                ['type' => 'submit', 'internal::useArraySyntax' => false, 'internal::fieldSeparateEnding' => true],
+                $buttonData['attributes']
+            );
 
             $this->addControlField(
                 null,
                 $this->addField('button', $buttonName, $buttonData['label'], $attr, false),
             );
-         }
+        }
     }
 
-  protected function save()
+    protected function save()
     {
-
-    foreach ($this->buttons as $buttonName => $buttonData) {
-        if (rex_request($buttonName, 'string', '') !== '') {
-              if (is_callable($buttonData['callback'])) {
-                   call_user_func($buttonData['callback']);
-                   return true; // wenn der Callback den rest der funktion überschreibt
+        foreach ($this->buttons as $buttonName => $buttonData) {
+            if (rex_post($buttonName, 'string', '') !== '') {
+                if (is_callable($buttonData['callback'])) {
+                    return call_user_func($buttonData['callback']);
                 }
-             }
+            }
         }
 
-       return parent::save(); // Aufruf der ursprünglichen save()-Methode
+        return parent::save();
     }
 }
