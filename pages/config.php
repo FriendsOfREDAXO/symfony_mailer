@@ -222,10 +222,9 @@ $field->setNotice($addon->i18n('imap_folder_notice'));
 
 // Output form
 $fragment = new rex_fragment();
-$fragment->setVar('class', 'col-md-8', false);
 $fragment->setVar('title', $addon->i18n('configuration'), false);
 $fragment->setVar('body', $form->get(), false);
-$content = $fragment->parse('core/page/panel.php'); // Changed to panel.php
+$content = $fragment->parse('core/page/section.php');
 
 // Test panel
 $testContent = '
@@ -253,12 +252,14 @@ $testContent = '
 </form>';
 
 $fragment = new rex_fragment();
-$fragment->setVar('class', 'col-md-4', false);
 $fragment->setVar('title', $addon->i18n('test_title'), false);
 $fragment->setVar('body', $testContent, false);
-$sidebar = $fragment->parse('core/page/panel.php'); // Changed to panel.php
+$sidebar = $fragment->parse('core/page/section.php');
 
 // Output complete page
-echo '<div class="row">' . $content . $sidebar . '</div>';
+echo '<div class="row">';
+    echo '<div class="col-md-8">' . $content . '</div>';
+    echo '<div class="col-md-4">' . $sidebar . '</div>';
+echo '</div>';
 
 ?>
