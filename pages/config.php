@@ -1,30 +1,9 @@
 <?php
 
 use FriendsOfRedaxo\SymfonyMailer\RexSymfonyMailer;
+use Symfony\Component\Mime\Email;
 
 $addon = rex_addon::get('symfony_mailer');
-
-// Handle test connection
-if (rex_post('test_connection', 'boolean')) {
-    try {
-        $mailer = new RexSymfonyMailer();
-        $result = $mailer->testConnection();
-        
-        if ($result['success']) {
-            echo rex_view::success($result['message']);
-        } else {
-            $error = $result['message'];
-            if (isset($result['debug']) && !empty($result['debug'])) {
-                $error .= '<br><br><strong>' . $addon->i18n('debug_info') . ':</strong><br>';
-                $error .= nl2br(rex_escape($result['debug']));
-            }
-            echo rex_view::error($error);
-        }
-        
-    } catch (\Exception $e) {
-        echo rex_view::error($e->getMessage());
-    }
-}
 
 $form = rex_config_form_enhanced::factory('symfony_mailer');
 
@@ -34,6 +13,10 @@ $form->addFieldset('SMTP Settings');
 $field = $form->addTextField('from');
 $field->setLabel($addon->i18n('sender_email'));
 $field->setNotice($addon->i18n('sender_email_notice'));
+
+$field = $form->addTextField('test_address');
+$field->setLabel($addon->i18n('test_address'));
+$field->setNotice($addon->i18n('test_address_notice'));
 
 $field = $form->addTextField('name');
 $field->setLabel($addon->i18n('sender_name'));
@@ -106,7 +89,77 @@ $field->setNotice($addon->i18n('imap_folder_notice'));
 $form->addButton(
     'test_connection',
     $addon->i18n('test_connection'),
-    ['class' => 'btn btn-primary']
+    ['class' => 'btn btn-primary'],
+    function() use ($addon) {
+        try {
+            $mailer = new RexSymfonyMailer();
+            $result = $mailer->testConnection();
+            
+            if ($result['success']) {
+                echo rex_view::success($result['message']);
+            } else {
+                $error = $result['message'];
+                if (isset($result['debug']) && !empty($result['debug'])) {
+                    $error .= '<br><br><strong>' . $addon->i18n('debug_info') . ':</strong><br>';
+                    $error .= nl2br(rex_escape($result['debug']));
+                }
+                echo rex_view::error($error);
+            }
+        } catch (\Exception $e) {
+            echo rex_view::error($e->getMessage());
+        }
+        return true;
+    }
+);
+
+// Add send test mail button
+$form->addButton(
+    'send_test',
+    $addon->i18n('test_mail_send'),
+    ['class' => 'btn btn-primary'],
+    function() use ($addon) {
+        if ('' == $addon->getConfig('from') || '' == $addon->getConfig('test_address')) {
+            echo rex_view::error($addon->i18n('test_mail_no_addresses'));
+            return true;
+        }
+        
+        try {
+            $mailer = new RexSymfonyMailer();
+            
+            $email = $mailer->createEmail();
+            $email->to($addon->getConfig('test_address'));
+            $email->subject($addon->i18n('test_mail_default_subject'));
+            
+            // Build test mail body with debug info
+            $body = $addon->i18n('test_mail_greeting') . "\n\n";
+            $body .= $addon->i18n('test_mail_body', rex::getServerName()) . "\n\n";
+            $body .= str_repeat('-', 50) . "\n\n";
+            $body .= 'Server: ' . rex::getServerName() . "\n";
+            $body .= 'Domain: ' . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-') . "\n";
+            $body .= 'Mailer: Symfony Mailer' . "\n";
+            $body .= 'Host: ' . $addon->getConfig('host') . "\n";
+            $body .= 'Port: ' . $addon->getConfig('port') . "\n";
+            $body .= 'Security: ' . ($addon->getConfig('security') ?: 'none') . "\n";
+            
+            $email->text($body);
+            
+            if ($mailer->send($email)) {
+                echo rex_view::success($addon->i18n('test_mail_sent', rex_escape($addon->getConfig('test_address'))));
+            } else {
+                $debugInfo = $mailer->getDebugInfo();
+                $error = $addon->i18n('test_mail_error');
+                if (!empty($debugInfo)) {
+                    $error .= '<br><br><strong>' . $addon->i18n('debug_info') . ':</strong><br>';
+                    $error .= nl2br(rex_escape(print_r($debugInfo, true)));
+                }
+                echo rex_view::error($error);
+            }
+            
+        } catch (\Exception $e) {
+            echo rex_view::error($addon->i18n('test_mail_error') . '<br>' . $e->getMessage());
+        }
+        return true;
+    }
 );
 
 // Output form
@@ -116,9 +169,8 @@ $fragment->setVar('title', $addon->i18n('configuration'), false);
 $fragment->setVar('body', $form->get(), false);
 
 echo $fragment->parse('core/page/section.php');
-
-// Add JavaScript for form field toggling
 ?>
+
 <script nonce="<?= rex_response::getNonce() ?>">
     rex_ready(function() {
         // Show/hide auth fields based on checkbox
