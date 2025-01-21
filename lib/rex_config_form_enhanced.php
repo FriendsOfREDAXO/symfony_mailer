@@ -2,49 +2,61 @@
 
 class rex_config_form_enhanced extends rex_config_form
 {
+    /** @var array<string, array{label: string, attributes: array, callback: callable|null}> */
+    private $buttons = [];
+
+    /**
+     * Fügt einen zusätzlichen Button zum Formular hinzu.
+     *
+     * @param string $name  Eindeutiger Name des Buttons.
+     * @param string $label Der angezeigte Text auf dem Button.
+     * @param array $attributes Zusätzliche Attribute.
+     * @param callable|null $callback Optionaler Callback der ausgeführt wird.
+     *
+     * @return $this
+     */
+    public function addButton(string $name, string $label, array $attributes = [], callable $callback = null): self
+    {
+        $this->buttons[$name] = [
+            'label' => $label,
+            'attributes' => $attributes,
+            'callback' => $callback,
+        ];
+
+        return $this;
+    }
+
     protected function loadBackendConfig()
     {
         parent::loadBackendConfig();
 
-        // Test-Button hinzufügen
-        $attrTest = ['type' => 'submit', 'internal::useArraySyntax' => false, 'internal::fieldSeparateEnding' => true];
-        $this->addControlField(
-            null,
-            $this->addField('button', 'test_button', 'Test Button', $attrTest, false),
-        );
 
-        // weiterer Button
-        $attrAnother = ['type' => 'submit', 'internal::useArraySyntax' => false, 'internal::fieldSeparateEnding' => true];
-        $this->addControlField(
-            null,
-            $this->addField('button', 'another_button', 'Another Button', $attrAnother, false),
-        );
+          // Buttons hinzufügen
+         foreach ($this->buttons as $buttonName => $buttonData) {
+             $attr = array_merge(
+                 ['type' => 'submit', 'internal::useArraySyntax' => false, 'internal::fieldSeparateEnding' => true],
+                 $buttonData['attributes']
+             );
+
+            $this->addControlField(
+                null,
+                $this->addField('button', $buttonName, $buttonData['label'], $attr, false),
+            );
+         }
     }
 
-
-   protected function save()
+  protected function save()
     {
-        if (rex_request('test_button', 'string', '') !== '') {
-            // Logik für den Test-Button
-            echo rex_view::success('Test Button wurde geklickt!');
-             // hier kann aber nicht die normale speicherung erfolgen
-              return true;
-        }
-    
-        if (rex_request('another_button', 'string', '') !== '') {
-            // Logik für den Another-Button
-            echo rex_view::success('Another Button wurde geklickt!');
-            // hier kann aber nicht die normale speicherung erfolgen
-              return true;
+
+    foreach ($this->buttons as $buttonName => $buttonData) {
+        if (rex_request($buttonName, 'string', '') !== '') {
+              if (is_callable($buttonData['callback'])) {
+                   call_user_func($buttonData['callback']);
+                   return true; // wenn der Callback den rest der funktion überschreibt
+                }
+             }
         }
 
-
-        return parent::save(); // Aufruf der ursprünglichen save()-Methode
+       return parent::save(); // Aufruf der ursprünglichen save()-Methode
     }
 }
-
-
-// Verwendung im Addon:
-$form = rex_config_form_enhanced::factory('my_addon', 'Einstellungen');
-$form->addTextField('my_setting', 'Meine Einstellung');
-$form->show();
