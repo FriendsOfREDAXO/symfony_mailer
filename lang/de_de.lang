@@ -55,3 +55,9 @@ symfony_mailer_log_subject = Betreff
 symfony_mailer_log_message = Nachricht
 
 symfony_mailer_config_saved = Einstellungen wurden gespeichert
+
+symfony_mailer_log_title = E-Mail Log "{0}"
+symfony_mailer_log_delete = Log löschen
+symfony_mailer_log_delete_confirm = Soll das Log wirklich gelöscht werden?
+symfony_mailer_log_deleted = Das Log wurde erfolgreich gelöscht
+symfony_mailer_log_delete_error = Das Log konnte nicht gelöscht werden
