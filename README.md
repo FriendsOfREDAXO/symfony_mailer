@@ -1,4 +1,4 @@
-# Symfony Mailer AddOn für REDAXO
+# Symfony Mailer AddOn für REDAXO 🐣
 
 Dieses REDAXO AddOn integriert den Symfony Mailer, um E-Mails aus REDAXO-Projekten zu versenden. Es bietet eine flexible Konfiguration für verschiedene SMTP-Einstellungen, E-Mail-Archivierung und Logging.
 
