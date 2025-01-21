@@ -1,8 +1,44 @@
-package: addon_key
-version: '0.0.0'
-author: 'Friends Of REDAXO'
-supportpage: https://github.com/FriendsOfREDAXO/addon_key
+package: symfony_mailer
+version: '1.0.0'
+author: REDAXO Team
+supportpage: https://github.com/redaxo/redaxo
+
+page:
+    title: 'translate:title'
+    perm: symfony_mailer[]
+    pjax: true
+    icon: rex-icon rex-icon-envelope
+    subpages:
+        config: { title: 'translate:configuration' }
+        test: { title: 'translate:test' }
+        log: { title: 'translate:logging' }
+        help: { title: 'translate:help', subPath: README.md, itemClass: 'pull-right' }
+
+pages:
+    system/log/mailer:
+        title: Symfony-Mailer
+        perm: admin
+
 requires:
-    redaxo: '^5.15.1'
     php:
-        version: '>=8.1, <9'
+        version: '>=8.2'
+    redaxo: ^5.18.1
+
+default_config:
+    from: ''
+    name: 'Mailer'
+    host: 'localhost'
+    port: 587
+    security: 'tls'
+    auth: true
+    username: ''
+    password: ''
+    charset: 'utf-8'
+    logging: 0
+    archive: false
+    imap_archive: false
+    imap_host: ''
+    imap_port: 993 
+    imap_username: ''
+    imap_password: ''
+    imap_folder: 'Sent'
