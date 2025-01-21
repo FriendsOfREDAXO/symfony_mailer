@@ -4,6 +4,8 @@ Tschüss PHPMailer! 👋 Dieses REDAXO AddOn bringt den Symfony Mailer ins Spiel
 
 `mail()` und `sendmail` haben wir hier einfach mal weggelassen. Dafür dürft ihr hier in IMAP-Ordnern speichern. 
 
+Okay, hier ist eine Ergänzung zur `README.md`, die die neuen YForm Actions `rex_yform_action_symfony_mailer` und `rex_yform_action_symfony_mailer_tpl2email` ab der Überschrift "## Verwendung" beschreibt:
+
 ## Features
 
 -   **Symfony Mailer Integration:** Nutzt die mächtige Symfony Mailer Library für zuverlässigen E-Mail-Versand.
@@ -236,6 +238,60 @@ if ($mailer->send($email)) {
 }
 ```
 
+## YForm Actions
+
+Dieses AddOn stellt zwei YForm Actions bereit, um E-Mails aus YForm Formularen zu versenden: `rex_yform_action_symfony_mailer` und `rex_yform_action_symfony_mailer_tpl2email`.
+
+### `rex_yform_action_symfony_mailer`
+
+Diese Action ermöglicht es, E-Mails direkt aus YForm-Formularen zu versenden. Sie bietet folgende Optionen:
+
+*   **`from@email.de`:** Die Absender-E-Mail-Adresse. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
+*   **`to@email.de[,to2@email.de]`:**  Die Empfänger-E-Mail-Adresse(n), kommagetrennt. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
+*   **`cc@email.de[,cc2@email.de]`:** (Optional) Die CC-Empfänger-E-Mail-Adresse(n), kommagetrennt. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
+*   **`bcc@email.de[,bcc2@email.de]`:** (Optional) Die BCC-Empfänger-E-Mail-Adresse(n), kommagetrennt. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
+*   **`Mailsubject`:** Der Betreff der E-Mail. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
+*   **`Mailbody###name###`:** Der Inhalt der E-Mail. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
+*   **`text/html`:**  (Optional) Gibt an, ob der E-Mail-Body als `text` (Standard) oder `html` interpretiert werden soll.
+*   **`{"host":"...", "port":"...", ...}`:** (Optional) Ein JSON-String mit eigenen SMTP-Einstellungen.
+*  **`IMAP-Folder`:**  (Optional) Ein IMAP Ordner in dem die Mails abgelegt werden soll.
+*   **`[{"type":"file", "path":"/path/to/file.pdf"}, {"type":"data", "data":"...", "contentType":"...", "filename":"..."}]`:** (Optional) Ein JSON-String mit Array von Anhangsdaten. Die Anhänge können entweder eine Datei (type:file, path:Pfad) sein oder über `DataPart` (type: data, data: Inhalt, contentType: Typ, filename: Dateiname) eingebunden werden.
+
+**Beispiel:**
+
+```
+action|symfony_mailer|from@example.com|to@example.com|cc@example.com|bcc@example.com|Betreff|Hallo ###name###!|text|{"host":"mail.example.com", "port":587, "security":"tls", "auth":true, "username":"testuser", "password":"testpassword"}|"MyCustomSentFolder"|[{"type":"file", "path":"/path/to/file.pdf"}, {"type":"data", "data":"Dies ist ein Textinhalt", "contentType":"text/plain", "filename":"mytext.txt"}]
+```
+### `rex_yform_action_symfony_mailer_tpl2email`
+
+Diese Action verwendet E-Mail-Vorlagen, die über das YForm-E-Mail-Template-AddOn konfiguriert werden. Sie bietet folgende Optionen:
+
+*   **`emailtemplate`:** Der Name der E-Mail-Vorlage.
+*   **`[email@domain.de/email_label]`:** Die Empfänger-E-Mail-Adresse oder ein Feldname, der die E-Mail-Adresse enthält. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
+*   **`[email_name]`:** (Optional) Der Name des Empfängers.
+*   **`[Fehlermeldung wenn Versand fehlgeschlagen ist/html]`:** (Optional) Eine Fehlermeldung, die ausgegeben wird, wenn der E-Mail-Versand fehlschlägt. Kann HTML enthalten.
+*   **`{"host":"...", "port":"...", ...}`:** (Optional) Ein JSON-String mit eigenen SMTP-Einstellungen.
+*  **`IMAP-Folder`:**  (Optional) Ein IMAP Ordner in dem die Mails abgelegt werden soll.
+
+Die E-Mail Vorlagen sollten folgende Daten enthalten:
+
+*   `mail_from`
+*   `mail_from_name`
+*  `mail_to` (wird durch die YForm-Action gesetzt, kann in der Template für CC/BCC genutzt werden)
+*  `mail_to_name` (wird durch die YForm-Action gesetzt)
+*   `mail_subject`
+*   `mail_body`
+* `mail_body_type` (optional: text oder html)
+* `mail_cc`  (optional)
+* `mail_bcc` (optional)
+*   `attachments` (optional): Ein Array von Anhängen (mit `path` - oder `data`, `contentType`, `filename`)
+
+**Beispiel:**
+
+```
+action|symfony_mailer_tpl2email|mein_email_template|email@example.com|Name|E-Mail konnte nicht gesendet werden|{"host":"mail.example.com", "port":587, "security":"tls", "auth":true, "username":"testuser", "password":"testpassword"}|"MyCustomSentFolder"
+```
+
 ## Wichtige Hinweise
 
 -   Standard-SMTP- und IMAP-Einstellungen im AddOn-Konfigurationsbereich konfigurieren.
@@ -246,7 +302,8 @@ if ($mailer->send($email)) {
 -   Eigene IMAP Ordner müssen auf dem IMAP Server existieren, sonst klappt das Archivieren nicht.
 -   Symfony-Exceptions werden gefangen und in `$debugInfo` gespeichert.
 
-###  `DataPart` und `File` - Anhänge und Inline-Bilder im Detail
+### `DataPart` und `File` - Anhänge und Inline-Bilder im Detail
+
    Im Symfony Mailer, werden die E-Mail Anhänge nicht über ein Array von Datei-Pfaden übergeben, sondern mit Objekten der Klasse `DataPart` oder `File`. Dies ist ein wichtiger Unterschied zu PHPMailer, mit dem viele REDAXO-Nutzer vertraut sind.
 
     -  **`DataPart`**: Stellt einen E-Mail-Anhang dar, der aus Daten (z.B. einem String) erzeugt wird, nicht aus einer Datei. Bedeutet, dass Daten direkt in den Anhang eingebettet werden, ohne eine temporäre Datei auf der Festplatte anlegen zu müssen.
@@ -281,6 +338,7 @@ if ($mailer->send($email)) {
    $email->html('<img src="cid:inline-image" alt="Inline Bild">')
    ->addPart(new DataPart(file_get_contents('/path/to/your/image.png'), 'image/png', 'inline-image'));
    ```
+
    In diesem Beispiel wird der Inhalt der Bilddatei `/path/to/your/image.png` als Inline-Bild an die E-Mail angehängt.
 
 ## Fehlerbehebung
@@ -299,6 +357,4 @@ Dieses AddOn ist unter der MIT-Lizenz lizenziert.
 
 Beiträge zum AddOn sind willkommen. Einfach Pull Requests auf GitHub einreichen.
 
-## Kontakt
 
-Bei Fragen oder Problemen einfach eine E-Mail an [Ihre E-Mail oder Ihren GitHub-Benutzernamen] schicken.
