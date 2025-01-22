@@ -149,14 +149,12 @@ if ($externalConfig) {
 // SMTP Settings Fieldset
 $form->addFieldset('SMTP Settings');
 
-
 $field = $form->addTextField('from');
 $field->setLabel($addon->i18n('sender_email'));
 $field->setNotice($addon->i18n('sender_email_notice'));
 if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
-
 
 $field = $form->addTextField('test_address');
 $field->setLabel($addon->i18n('test_address'));
@@ -177,14 +175,12 @@ if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
 
-
 $field = $form->addTextField('port');
 $field->setLabel($addon->i18n('smtp_port'));
 $field->setNotice($addon->i18n('smtp_port_notice'));
 if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
-
 
 $field = $form->addSelectField('security');
 $field->setLabel($addon->i18n('smtp_security'));
@@ -209,7 +205,6 @@ if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
 
-// Korrekte Verwendung von setAttribute() für das SMTP Passwort
 $field = $form->addTextField('password');
 $field->setLabel($addon->i18n('smtp_password'));
 $field->setAttribute('type', 'password');
@@ -250,13 +245,11 @@ if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
 
-
 $field = $form->addTextField('imap_host');
 $field->setLabel($addon->i18n('imap_host'));
 if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
-
 
 $field = $form->addTextField('imap_port');
 $field->setLabel($addon->i18n('imap_port'));
@@ -265,15 +258,12 @@ if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
 
-
 $field = $form->addTextField('imap_username');
 $field->setLabel($addon->i18n('imap_username'));
 if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
 
-
-// Korrekte Verwendung von setAttribute() für das IMAP Passwort
 $field = $form->addTextField('imap_password');
 $field->setLabel($addon->i18n('imap_password'));
 $field->setAttribute('type', 'password');
@@ -281,13 +271,20 @@ if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
 
-
 $field = $form->addTextField('imap_folder');
 $field->setLabel($addon->i18n('imap_folder'));
 $field->setNotice($addon->i18n('imap_folder_notice'));
 if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
+
+// Detour Mode Settings Fieldset
+$form->addFieldset('Detour Mode');
+
+$field = $form->addCheckboxField('detour_mode');
+$field->setLabel($addon->i18n('detour_mode'));
+$field->addOption($addon->i18n('detour_mode_enabled'), 1);
+$field->setNotice($addon->i18n('detour_mode_notice'));
 
 
 // Output form
