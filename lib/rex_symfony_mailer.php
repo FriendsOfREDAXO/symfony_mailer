@@ -123,41 +123,44 @@ class RexSymfonyMailer
     }
 
     /**
-     * @return array<string,mixed>
-     */
-    public function testConnection(array $smtpSettings = []): array
-    {
-        try {
-            $transport = Transport::fromDsn($this->buildDsn($smtpSettings));
-            
-            // Start with debug output capture if debug is enabled
-            if ($this->debug && $transport instanceof \Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport) {
-                $transport->setStream(new \Symfony\Component\Mailer\Transport\Smtp\Stream\SocketStream());
-                $transport->getStream()->setDebug(true);
-                ob_start();
-                $transport->start();
-                $this->debugInfo['smtp_debug'] = ob_get_clean();
-            } else {
-                $transport->start();
-            }
-
-            return [
-                'success' => true,
-                'message' => rex_i18n::msg('symfony_mailer_test_connection_success'),
-                'debug' => $this->debug ? $this->debugInfo : null
-            ];
-
-        } catch (\Exception $e) {
-            $this->debugInfo['error'] = $e->getMessage();
-            $this->debugInfo['trace'] = $e->getTraceAsString();
-            
-            return [
-                'success' => false,
-                'message' => rex_i18n::msg('symfony_mailer_test_connection_error', $e->getMessage()),
-                'debug' => $this->debugInfo
-            ];
+ * @return array<string,mixed>
+ */
+public function testConnection(array $smtpSettings = []): array
+{
+    try {
+        $dsn = $this->buildDsn($smtpSettings);
+        
+        // Capture debug output if enabled
+        if ($this->debug) {
+            $logger = new \Symfony\Component\Mailer\Transport\Smtp\Stream\AbstractStream();
+            $logger->setDebug(true);
+            ob_start();
         }
+        
+        $transport = Transport::fromDsn($dsn);
+        $transport->start();
+        
+        if ($this->debug) {
+            $this->debugInfo['smtp_debug'] = ob_get_clean();
+        }
+
+        return [
+            'success' => true,
+            'message' => rex_i18n::msg('symfony_mailer_test_connection_success'),
+            'debug' => $this->debug ? $this->debugInfo : null
+        ];
+
+    } catch (\Exception $e) {
+        $this->debugInfo['error'] = $e->getMessage();
+        $this->debugInfo['trace'] = $e->getTraceAsString();
+        
+        return [
+            'success' => false,
+            'message' => rex_i18n::msg('symfony_mailer_test_connection_error', $e->getMessage()),
+            'debug' => $this->debugInfo
+        ];
     }
+}
 
     public function createEmail(): Email
     {
