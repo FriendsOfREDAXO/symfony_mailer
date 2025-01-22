@@ -259,9 +259,29 @@ Diese Action ermöglicht es, E-Mails direkt aus YForm-Formularen zu versenden. S
 
 **Beispiel:**
 
+PIPE
 ```
 action|symfony_mailer|from@example.com|to@example.com|cc@example.com|bcc@example.com|Betreff|Hallo ###name###!|text|{"host":"mail.example.com", "port":587, "security":"tls", "auth":true, "username":"testuser", "password":"testpassword"}|"MyCustomSentFolder"|[{"type":"file", "path":"/path/to/file.pdf"}, {"type":"data", "data":"Dies ist ein Textinhalt", "contentType":"text/plain", "filename":"mytext.txt"}]
 ```
+
+PHP 
+```php
+$yform->setActionField(
+    'symfony_mailer',
+    'info@example.com',  // mail_from
+    '###email###',  // mail_to
+    'cc@example.com', // mail_cc
+    '',  // mail_bcc
+    'Test Email from YForm', // mail_subject
+    'Hallo ###name###,\n\nNachricht: ###message###', // mail_body
+    'text', // mail_body_type
+   '', // smtp_settings_json
+   'Sent', // imap_folder
+    '' // mail_attachments
+);
+```
+
+
 ### `rex_yform_action_symfony_mailer_tpl2email`
 
 Diese Action verwendet E-Mail-Vorlagen, die über das YForm-E-Mail-Template-AddOn konfiguriert werden. Sie bietet folgende Optionen:
@@ -288,9 +308,26 @@ Die E-Mail Vorlagen sollten folgende Daten enthalten:
 
 **Beispiel:**
 
+PIPE
 ```
 action|symfony_mailer_tpl2email|mein_email_template|email@example.com|Name|E-Mail konnte nicht gesendet werden|{"host":"mail.example.com", "port":587, "security":"tls", "auth":true, "username":"testuser", "password":"testpassword"}|"MyCustomSentFolder"
 ```
+
+PHP 
+```php 
+$yform->setActionField(
+    'symfony_mailer_tpl2email',
+    'mein_email_template', // template_name
+    'email',            // email_to (Feldname)
+    '',              // email_to_name
+    'Es ist ein Fehler aufgetreten!', // warning_message
+    '{"host":"mailhog","port":1025, "auth":false}', // smtp_settings_json
+    'Sent'    // imap_folder
+
+);
+```
+
+
 
 ## Wichtige Hinweise
 
