@@ -26,7 +26,7 @@ class RexSymfonyMailer
     private bool $imapArchive;
     private array $errorInfo = [];
     private bool $debug;
-    
+
     /**
      * @var array<string, mixed>
      */
@@ -47,7 +47,7 @@ class RexSymfonyMailer
         $this->archive = (bool)$addon->getConfig('archive', false);
         $this->imapArchive = (bool)$addon->getConfig('imap_archive', false);
         $this->debug = (bool)$addon->getConfig('debug', false);
-        
+
         $this->smtpSettings = [
             'host' => $addon->getConfig('host'),
             'port' => $addon->getConfig('port'),
@@ -64,7 +64,7 @@ class RexSymfonyMailer
             'password' => $addon->getConfig('imap_password'),
             'folder' => $addon->getConfig('imap_folder', 'Sent')
         ];
-        
+
         $this->initializeMailer();
     }
 
@@ -117,7 +117,7 @@ class RexSymfonyMailer
         if (str_contains($error, 'authentication failed') || str_contains($error, 'Expected response code "235"')) {
             return rex_i18n::msg('symfony_mailer_error_auth');
         }
-        
+
         if (str_contains($error, 'Connection could not be established')) {
             return rex_i18n::msg('symfony_mailer_error_connection');
         }
@@ -151,10 +151,9 @@ class RexSymfonyMailer
                 'success' => true,
                 'message' => rex_i18n::msg('symfony_mailer_test_connection_success')
             ];
-
         } catch (\Exception $e) {
             $this->logError('SMTP connection test failed', $e);
-            
+
             return [
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -168,7 +167,7 @@ class RexSymfonyMailer
         $email = new Email();
         $email->from(new Address($this->fromAddress, $this->fromName));
         $email->charset = $this->charset;
-        
+
         return $email;
     }
 
@@ -185,7 +184,7 @@ class RexSymfonyMailer
                 return false;
             }
         }
-       
+
         try {
             $mailer->send($email);
 
@@ -199,7 +198,6 @@ class RexSymfonyMailer
 
             $this->log('OK', $email);
             return true;
-
         } catch (TransportExceptionInterface $e) {
             $this->logError('Failed to send email', $e);
             return false;
@@ -246,15 +244,15 @@ class RexSymfonyMailer
     private function logError(string $context, \Exception $e): void
     {
         $this->errorInfo = $this->getErrorDetails($e);
-        
-        if ($this->debug) {
-            rex_logger::logError(
-                E_WARNING,
-                $context . ': ' . $e->getMessage(),
-                $e->getFile(),
-                $e->getLine(),
-                isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null
-            );
+
+        // Logging nur wenn gewünscht (nach Einstellung)
+        $addon = rex_addon::get('symfony_mailer');
+        $logging = (int)$addon->getConfig('logging');
+
+        if ($logging === 1) { // nur Fehler loggen
+            $this->log('ERROR', new Email(), $e->getMessage());
+        } elseif ($logging === 2) { // alles loggen
+            $this->log('ERROR', new Email(), $context . ': ' . $e->getMessage() . ($this->debug ? "\n" . $e->getTraceAsString() : ''));
         }
     }
 
@@ -281,7 +279,15 @@ class RexSymfonyMailer
     private function log(string $status, Email $email, string $error = ''): void
     {
         $addon = rex_addon::get('symfony_mailer');
-        if (!$addon->getConfig('logging')) {
+        $logging = (int)$addon->getConfig('logging');
+
+        if ($logging === 0) {
+            return;
+        }
+
+        // Bei Fehlern immer loggen wenn logging = 1 oder 2
+        // Bei Erfolg nur loggen wenn logging = 2
+        if ($logging === 1 && $status !== 'ERROR') {
             return;
         }
 
