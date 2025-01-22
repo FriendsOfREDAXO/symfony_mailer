@@ -1,0 +1,10 @@
+# Mailhog Konfiguration für den DEV-Mode
+# Die Standard SMTP Settings können im Addon konfiguriert werden
+# Wenn diese Datei existiert werden die Standard Settings Ignoriert
+
+host: 'mailhog'  # Hostname oder IP-Adresse von Mailhog. Nutze den Containernamen wenn mit docker compose
+port: 1025  # Standard SMTP Port von Mailhog
+security: null  # 'ssl', 'tls' oder null
+auth: false  # Braucht Mailhog keine Auth
+username: '' # Mailhog braucht keinen user
+password: ''  # Mailhog braucht kein PW
