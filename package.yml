@@ -40,4 +40,4 @@ default_config:
     imap_port: 993 
     imap_username: ''
     imap_password: ''
-    imap_folder: 'Sent'
+    imap_folder: 'INBOX.Sent'
