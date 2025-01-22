@@ -21,17 +21,13 @@ symfony_mailer_smtp_auth = Authentifizierung
 symfony_mailer_smtp_auth_enabled = Authentifizierung aktivieren
 symfony_mailer_smtp_username = Benutzername
 symfony_mailer_smtp_password = Passwort
-symfony_mailer_smtp_debug = Debug-Level
-symfony_mailer_smtp_debug_disabled = Debug deaktiviert
-symfony_mailer_smtp_debug_client = Client-Protokoll
-symfony_mailer_smtp_debug_server = Server- und Client-Protokoll
-symfony_mailer_smtp_debug_connection = Verbindungsprotokoll
-symfony_mailer_smtp_debug_lowlevel = Detailliertes Protokoll
-symfony_mailer_smtp_debug_info = Je höher der Debug-Level, desto detaillierter die Informationen. Im Produktivbetrieb sollte Debug deaktiviert sein.
+symfony_mailer_smtp_debug = Debug-Modus
+symfony_mailer_smtp_debug_enabled = Debug-Modus aktivieren
+symfony_mailer_smtp_debug_notice = Im Debug-Modus werden detaillierte Verbindungsinformationen angezeigt. Im Produktivbetrieb sollte der Debug-Modus deaktiviert bleiben.
 
 # Test-Panel
 symfony_mailer_test_title = Verbindungstests
-symfony_mailer_test_info = Hier können Sie die SMTP- und IMAP-Verbindungen testen und eine Test-E-Mail versenden. Die Debug-Informationen helfen bei der Fehlersuche.
+symfony_mailer_test_info = Hier können Sie die SMTP- und IMAP-Verbindungen testen und eine Test-E-Mail versenden. Wenn der Debug-Modus aktiviert ist, werden zusätzliche Verbindungsinformationen angezeigt.
 symfony_mailer_smtp_test = SMTP-Tests
 symfony_mailer_test_connection = SMTP-Verbindung testen
 symfony_mailer_test_mail_send = Test-E-Mail senden
