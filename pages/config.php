@@ -11,15 +11,24 @@ function outputTestResult($message, $success = true, $error = null)
     if ($success) {
         echo rex_view::success($message);
     } else {
-        $output = $message;
-        if (isset($error) && !empty($error)) {
-            if (isset($error['hint'])) {
-                $output .= '<br><br><strong>Hinweis:</strong><br>' . rex_escape($error['hint']);
-            }
-            $output .= '<br><br><strong>' . rex_i18n::msg('debug_info') . ':</strong><br>';
-            $output .= '<pre class="rex-debug">' . rex_escape(print_r($error, true)) . '</pre>';
+        $output = '';
+        
+        // Wenn ein Hinweis vorhanden ist, zeigen wir diesen zuerst
+        if (isset($error['hint'])) {
+            $output .= rex_escape($error['hint']);
         }
-        echo rex_view::error($output);
+        
+        // Wenn Debug aktiviert ist und es weitere Details gibt, zeigen wir diese an
+        if (isset($error['message']) && rex_addon::get('symfony_mailer')->getConfig('debug')) {
+            $output .= '<br><br><strong>' . rex_i18n::msg('debug_info') . ':</strong><br>';
+            $output .= '<pre class="rex-debug">' . rex_escape($error['message']);
+            if (isset($error['dsn'])) {
+                $output .= "\n\nDSN: " . rex_escape($error['dsn']);
+            }
+            $output .= '</pre>';
+        }
+        
+        echo rex_view::error($output ?: $message);
     }
 }
 
