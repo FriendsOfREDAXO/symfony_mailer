@@ -6,17 +6,20 @@ use Symfony\Component\Mime\Email;
 $addon = rex_addon::get('symfony_mailer');
 
 // --- Funktionen für Testausgaben ---
-function outputTestResult($message, $success = true, $debug = null)
+function outputTestResult($message, $success = true, $error = null)
 {
     if ($success) {
         echo rex_view::success($message);
     } else {
-        $error = $message;
-        if (isset($debug) && !empty($debug)) {
-            $error .= '<br><br><strong>' . rex_i18n::msg('debug_info') . ':</strong><br>';
-            $error .= '<pre class="rex-debug">' . rex_escape(print_r($debug, true)) . '</pre>';
+        $output = $message;
+        if (isset($error) && !empty($error)) {
+            if (isset($error['hint'])) {
+                $output .= '<br><br><strong>Hinweis:</strong><br>' . rex_escape($error['hint']);
+            }
+            $output .= '<br><br><strong>' . rex_i18n::msg('debug_info') . ':</strong><br>';
+            $output .= '<pre class="rex-debug">' . rex_escape(print_r($error, true)) . '</pre>';
         }
-        echo rex_view::error($error);
+        echo rex_view::error($output);
     }
 }
 
@@ -26,7 +29,7 @@ if (rex_post('test_connection', 'boolean')) {
         $mailer = new RexSymfonyMailer();
         $result = $mailer->testConnection();
         
-        outputTestResult($result['message'], $result['success'], $result['debug'] ?? null);
+        outputTestResult($result['message'], $result['success'], $result['error_details'] ?? null);
     } catch (\Exception $e) {
         outputTestResult($e->getMessage(), false);
     }
@@ -110,12 +113,12 @@ if (rex_post('test_mail', 'boolean')) {
             
             $email->text($body);
             
-           if ($mailer->send($email)) {
-    outputTestResult($addon->i18n('test_mail_sent', rex_escape($addon->getConfig('test_address'))), true);
-} else {
-    $errorInfo = $mailer->getErrorInfo();
-    outputTestResult($addon->i18n('test_mail_error'), false, $errorInfo);
-}
+            if ($mailer->send($email)) {
+                outputTestResult($addon->i18n('test_mail_sent', rex_escape($addon->getConfig('test_address'))), true);
+            } else {
+                $errorInfo = $mailer->getErrorInfo();
+                outputTestResult($addon->i18n('test_mail_error'), false, $errorInfo);
+            }
             
         } catch (\Exception $e) {
             outputTestResult($addon->i18n('test_mail_error') . '<br>' . $e->getMessage(), false);
@@ -209,7 +212,6 @@ $field = $form->addTextField('imap_folder');
 $field->setLabel($addon->i18n('imap_folder'));
 $field->setNotice($addon->i18n('imap_folder_notice'));
 
-
 // Output form
 echo '<section class="rex-page-section">
     <div class="panel panel-edit">
@@ -254,5 +256,3 @@ echo '</div>
         </div>
     </div>
 </section>';
-
-?>
