@@ -20,7 +20,7 @@ function outputTestResult($message, $success = true, $error = null)
         
         // Wenn Debug aktiviert ist und es weitere Details gibt, zeigen wir diese an
         if (isset($error['message']) && rex_addon::get('symfony_mailer')->getConfig('debug')) {
-            $output .= '<br><br><strong>' . rex_i18n::msg('debug_info') . ':</strong><br>';
+            $output .= '<br><br><strong>' . rex_i18n::msg('symfony_mailer_debug_info') . ':</strong><br>';
             $output .= '<pre class="rex-debug">' . rex_escape($error['message']);
             if (isset($error['dsn'])) {
                 $output .= "\n\nDSN: " . rex_escape($error['dsn']);
