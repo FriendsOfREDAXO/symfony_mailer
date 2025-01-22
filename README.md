@@ -1,5 +1,7 @@
 # Symfony Mailer AddOn für REDAXO 🐣
 
+> Das AddOn ist noch in Entwicklung, aber ihr könnt schon testen
+
 Bye-bye PHPMailer! 👋 Dieses REDAXO AddOn bringt den Symfony Mailer ins Spiel, um E-Mails in REDAXO-Projekten zu rocken. Das Ding hat 'ne mega flexible Konfiguration für verschiedene SMTP-Einstellungen, E-Mail-Archivierung und Logging am Start.
 
 `mail()` und `sendmail` haben wir mal links liegen gelassen. Stattdessen kannst du hier in IMAP-Ordnern speichern.
@@ -25,7 +27,7 @@ Bye-bye PHPMailer! 👋 Dieses REDAXO AddOn bringt den Symfony Mailer ins Spiel,
 
 ## Installation
 
-1.  AddOn aus dem REDAXO-Repository oder von GitHub laden.
+1.  AddOn aus dem REDAXO-Repository oder von GitHub laden. (später mal im Installer) 
 2.  AddOn in den REDAXO-AddOn-Ordner (`/redaxo/src/addons`) entpacken.
 3.  AddOn im REDAXO-Backend aktivieren.
 4.  Standard-SMTP- und IMAP-Einstellungen im AddOn-Konfigurationsbereich eintragen.
