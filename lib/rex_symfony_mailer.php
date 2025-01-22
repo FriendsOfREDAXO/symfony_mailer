@@ -67,7 +67,6 @@ class RexSymfonyMailer
         $this->imapArchive = (bool)($customConfig['imap_archive'] ?? $addon->getConfig('imap_archive', false));
         $this->debug = (bool)($customConfig['debug'] ?? $addon->getConfig('debug', false));
         $this->detourMode = (bool)($customConfig['detour_mode'] ?? $addon->getConfig('detour_mode', false));
-        // Modified line: added default empty string if all options fail
         $this->detourAddress = $customConfig['detour_address'] ?? $addon->getConfig('detour_address', $addon->getConfig('test_address') ?? '');
 
         $this->smtpSettings = [
@@ -215,11 +214,11 @@ class RexSymfonyMailer
      *
      * @return Email The new Email instance.
      */
-    public function createEmail(): Email
+     public function createEmail(): Email
     {
         $email = new Email();
         $email->from(new Address($this->fromAddress, $this->fromName));
-        $email->charset($this->charset);
+        $email->getHeaders()->addTextHeader('Content-type', 'text/html; charset='.$this->charset);
 
         return $email;
     }
