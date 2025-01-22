@@ -341,6 +341,40 @@ action|symfony_mailer_tpl2email|mein_email_template|email@example.com|Name|E-Mai
 
    In diesem Beispiel wird der Inhalt der Bilddatei `/path/to/your/image.png` als Inline-Bild an die E-Mail angehängt.
 
+
+## DEV-Mode 
+
+Um das Testen von E-Mail-Funktionen in Entwicklungsumgebungen zu erleichtern, wurde ein DEV-Mode in das Symfony Mailer Addon integriert. Dieser Modus ermöglicht es, E-Mails zu simulieren, ohne sie tatsächlich über einen SMTP-Server zu versenden. Stattdessen werden die E-Mails entweder nur archiviert, oder an einen lokalen Test Mailserver umgeleitet, was besonders in Testumgebungen von Vorteil ist.
+
+### Funktionsweise des DEV-Mode
+
+1.  **Erkennung des DEV-Mode:** Der DEV-Mode wird durch das Vorhandensein der Datei `symfony_mailer_dev.yml` im Datenordner des Symfony Mailer Addons (unter `REDAXO_PATH/data/addons/symfony_mailer/symfony_mailer_dev.yml`) aktiviert.
+2.  **Konfigurationsdatei `symfony_mailer_dev.yml`:**
+    *   Wenn die Datei vorhanden ist, wird der DEV-Mode aktiviert.
+    *   Wenn die Datei **leer** ist, werden E-Mails nicht an einen SMTP-Server gesendet, sondern lediglich im Archiv gespeichert. Die in der REDAXO-Konfiguration festgelegten Einstellungen werden hierbei ignoriert.
+    *   Wenn die Datei **nicht leer** ist und gültige SMTP-Einstellungen enthält, werden diese Einstellungen anstelle der REDAXO-Konfiguration für das Senden von E-Mails verwendet. Dies ist besonders praktisch, um E-Mails an einen lokalen Testserver wie Mailhog weiterzuleiten.
+3.  **Verhalten im DEV-Mode:**
+    *   Die Methode `testConnection` gibt im DEV-Mode immer eine Erfolgsmeldung mit dem Hinweis "(DEV-Mode)" zurück. Das hilft zu erkennen, dass sich das Addon im DEV-Mode befindet.
+    *   Die `send`-Methode archiviert E-Mails im DEV-Mode immer im E-Mail-Archiv. Wenn keine SMTP-Einstellungen in `symfony_mailer_dev.yml` definiert sind, wird die Mail **nicht** gesendet und nur archiviert. Wenn SMTP-Einstellungen in der Datei angegeben sind wird der Mailserver aus der Datei verwendet.
+4.  **Alternative zu echter SMTP-Konfiguration:** In der DEV-Umgebung muss kein echter Mailserver in REDAXO konfiguriert werden. Dies vereinfacht das Set-up der Testumgebung.
+
+### Implementierungsdetails
+
+*   **`$devMode` Property:** Die private Eigenschaft `$devMode` in der `RexSymfonyMailer`-Klasse speichert den Zustand des DEV-Mode.
+*   **Initialisierung im Konstruktor:** Im Konstruktor der Klasse wird geprüft, ob die `symfony_mailer_dev.yml`-Datei existiert und der Modus entsprechend aktiviert oder deaktiviert. Die YAML-Datei wird mit `rex_string::yamlDecode()` eingelesen und die Einstellungen werden übernommen.
+*   **Modifikation der `buildDsn()`-Methode:** Wenn der DEV-Mode aktiv ist und die Config-Datei leer ist gibt `buildDsn()` `"null://"` zurück, so dass kein Transport mit der Mailer Klasse initialisiert werden kann. Wenn der DEV-Mode aktiv ist und die Config-Datei nicht leer ist werden die Settings aus der Config übernommen.
+*   **Modifikation der `send()`-Methode:** Wenn der DEV-Mode aktiv ist, wird die Methode `send()` abgekürzt und die Mail nur archiviert. Ein Hinweis "(DEV-Mode)" wird ins Log geschrieben.
+*   **Modifikation der `testConnection()`-Methode:** Wenn der DEV-Mode aktiv ist, gibt die Methode immer ein positives Ergebnis mit Hinweis aus.
+
+### Vorteile des DEV-Mode
+
+*   **Einfaches Testen:** Lokales Testen ohne echten Mailserver.
+*   **Schnelle Entwicklung:** Keine Notwendigkeit, jedes Mal echte E-Mails zu versenden.
+*   **Flexibilität:** Man kann wählen ob die Mails nur archiviert oder an einen lokalen Mailserver weitergeleitet werden.
+*   **Saubere Testumgebung:** Vermeidung von Testmails im Livebetrieb.
+*   **Schnelles Debugging:** Dank Log Einträgen kann man schnell überprüfen ob der DEV-Mode greift und die Mails nicht an den Live Mailserver gehen.
+
+
 ## Fehlerbehebung
 
 *   **Fehler beim Senden:** Check die Standard-Konfigurationen (Host, Port, Benutzername, Passwort) oder die eigenen SMTP-Einstellungen.
