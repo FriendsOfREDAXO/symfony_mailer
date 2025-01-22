@@ -72,7 +72,6 @@ symfony_mailer_log_date = Datum
 symfony_mailer_log_from
 
 # SMTP-Fehler-Hilfe
-// in de_de.lang
 symfony_mailer_error_auth = Der Benutzername oder das Passwort ist falsch. Bitte überprüfen Sie die SMTP-Zugangsdaten.
 symfony_mailer_error_connection = Es konnte keine Verbindung zum SMTP-Server hergestellt werden. Bitte überprüfen Sie Host und Port sowie Ihre Internetverbindung.
 symfony_mailer_error_ssl = Es gab einen Fehler mit der SSL/TLS-Verschlüsselung. Möglicherweise ist die falsche Verschlüsselungsmethode gewählt oder der Server unterstützt diese nicht.
