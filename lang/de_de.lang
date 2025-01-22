@@ -1,4 +1,4 @@
-symfony_mailer_title = REDAXO Symfony Mailer
+symfony_mailer_title = Mailer
 symfony_mailer_configuration = Konfiguration
 symfony_mailer_help = Hilfe
 symfony_mailer_logging = Log
