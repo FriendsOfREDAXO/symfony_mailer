@@ -15,6 +15,8 @@ use rex_log_file;
 use rex_file;
 use rex_dir;
 use rex_logger;
+use rex_string;
+use rex_yaml_parse_exception;
 
 class RexSymfonyMailer
 {
@@ -26,6 +28,7 @@ class RexSymfonyMailer
     private bool $imapArchive;
     private array $errorInfo = [];
     private bool $debug;
+    private bool $devMode = false;
 
     /**
      * @var array<string, mixed>
@@ -48,14 +51,36 @@ class RexSymfonyMailer
         $this->imapArchive = (bool)$addon->getConfig('imap_archive', false);
         $this->debug = (bool)$addon->getConfig('debug', false);
 
-        $this->smtpSettings = [
-            'host' => $addon->getConfig('host'),
-            'port' => $addon->getConfig('port'),
-            'security' => $addon->getConfig('security'),
-            'auth' => $addon->getConfig('auth'),
-            'username' => $addon->getConfig('username'),
-            'password' => $addon->getConfig('password'),
-        ];
+
+         // DEV-Mode Check
+        $devConfigFile = rex_path::addonData('symfony_mailer', 'symfony_mailer_dev.yml');
+         if (file_exists($devConfigFile)) {
+            $this->devMode = true;
+             $devConfig = rex_file::get($devConfigFile);
+
+            if (trim($devConfig)) {
+               try {
+                 $this->smtpSettings = rex_string::yamlDecode($devConfig);
+               } catch (rex_yaml_parse_exception $e) {
+                 $this->logError('Failed to parse dev config file', $e);
+                 $this->smtpSettings = []; // Setze auf leer um Fehler zu vermeiden.
+               }
+             } else {
+                $this->smtpSettings = [];
+              }
+
+         } else {
+           $this->smtpSettings = [
+                'host' => $addon->getConfig('host'),
+                'port' => $addon->getConfig('port'),
+                'security' => $addon->getConfig('security'),
+                'auth' => $addon->getConfig('auth'),
+                'username' => $addon->getConfig('username'),
+                'password' => $addon->getConfig('password'),
+            ];
+        }
+
+
 
         $this->imapSettings = [
             'host' => $addon->getConfig('imap_host'),
@@ -64,7 +89,7 @@ class RexSymfonyMailer
             'password' => $addon->getConfig('imap_password'),
             'folder' => $addon->getConfig('imap_folder', 'Sent')
         ];
-
+        
         $this->initializeMailer();
     }
 
@@ -82,7 +107,12 @@ class RexSymfonyMailer
 
     private function buildDsn(array $smtpSettings = []): string
     {
-        $settings = empty($smtpSettings) ? $this->smtpSettings : $smtpSettings;
+       $settings = empty($smtpSettings) ? $this->smtpSettings : $smtpSettings;
+
+
+        if($this->devMode && empty($settings)){
+              return 'null://';
+        }
 
         $host = $settings['host'];
         $port = $settings['port'];
@@ -143,6 +173,12 @@ class RexSymfonyMailer
 
     public function testConnection(array $smtpSettings = []): array
     {
+         if($this->devMode){
+             return [
+                'success' => true,
+                'message' => rex_i18n::msg('symfony_mailer_test_connection_success') . ' (DEV-Mode)'
+            ];
+        }
         try {
             $transport = Transport::fromDsn($this->buildDsn($smtpSettings));
             $transport->start();
@@ -184,6 +220,14 @@ class RexSymfonyMailer
                 return false;
             }
         }
+
+
+      if ($this->devMode) {
+          $this->archiveEmail($email);
+            $this->log('OK', $email, ' (DEV-Mode)');
+         return true;
+       }
+
 
         try {
             $mailer->send($email);
