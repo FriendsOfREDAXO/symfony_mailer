@@ -341,9 +341,9 @@ $yform->setActionField(
 
 ### `DataPart` und `File` - Anhänge und Inline-Bilder im Detail
 
-   Im Symfony Mailer, werden die E-Mail Anhänge nicht über ein Array von Datei-Pfaden übergeben, sondern mit Objekten der Klasse `DataPart` oder `File`. Dies ist ein wichtiger Unterschied zu PHPMailer, mit dem viele REDAXO-Nutzer vertraut sind.
+Im Symfony Mailer, werden die E-Mail Anhänge nicht über ein Array von Datei-Pfaden übergeben, sondern mit Objekten der Klasse `DataPart` oder `File`. Dies ist ein wichtiger Unterschied zu PHPMailer, mit dem viele REDAXO-Nutzer vertraut sind.
 
-    -  **`DataPart`**: Stellt einen E-Mail-Anhang dar, der aus Daten (z.B. einem String) erzeugt wird, nicht aus einer Datei. Bedeutet, dass Daten direkt in den Anhang eingebettet werden, ohne eine temporäre Datei auf der Festplatte anlegen zu müssen.
+**`DataPart`**: Stellt einen E-Mail-Anhang dar, der aus Daten (z.B. einem String) erzeugt wird, nicht aus einer Datei. Bedeutet, dass Daten direkt in den Anhang eingebettet werden, ohne eine temporäre Datei auf der Festplatte anlegen zu müssen.
 
        ```php
        use Symfony\Component\Mime\Part\DataPart;
@@ -355,13 +355,12 @@ $yform->setActionField(
         new DataPart(file_get_contents('/pfad/zum/bild.png'), 'image/png', 'inline-image');
         ```
 
-    -   **`File`**: Stellt einen Anhang dar, der aus einer Datei auf der Festplatte erzeugt wird. Das ist vergleichbar mit dem Anhängen von Dateien in PHPMailer, aber auch hier wird anstelle eines Dateipfades, ein File Objekt übergeben.
+**`File`**: Stellt einen Anhang dar, der aus einer Datei auf der Festplatte erzeugt wird. Das ist vergleichbar mit dem Anhängen von Dateien in PHPMailer, aber auch hier wird anstelle eines Dateipfades, ein File Objekt übergeben.
 
          ```php
          use Symfony\Component\Mime\Part\File;
         new File('/pfad/zu/datei.pdf');
          ```
-
 ### Inline-Bilder mit `DataPart`
 
    Um Inline-Bilder zu verwenden, werden die Bilder ebenfalls als `DataPart` hinzugefügt. Hier ist der Knackpunkt:
