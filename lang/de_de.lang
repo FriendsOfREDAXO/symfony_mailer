@@ -90,7 +90,8 @@ symfony_mailer_debug_info = Debug-Informationen:
 config_external = Die Einstellungen für diesen AddOn werden über die custom_config.yml im Data-Ordner überschrieben.
 
 # Detour
-detour_mode_enabled = Detour-Mode aktivieren
-detour_mode_notice = Wenn aktiviert, werden alle ausgehenden E-Mails an die in der <code>custom_config.yml</code> konfigurierte oder die Standard-Testadresse umgeleitet.
+symfony_mailer_detour_mode = Detour
+symfony_mailer_detour_mode_enabled = Aktiv / Inaktiv
+symfony_mailer_detour_mode_notice = Wenn aktiviert, werden alle ausgehenden E-Mails an die in der <code>custom_config.yml</code> konfigurierte oder die Standard-Testadresse umgeleitet.
 
 
