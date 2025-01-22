@@ -69,7 +69,13 @@ symfony_mailer_archive_emails = E-Mails archivieren
 symfony_mailer_archive_enabled = Archivierung aktivieren
 symfony_mailer_log_status = Status
 symfony_mailer_log_date = Datum
-symfony_mailer_log_from
+symfony_mailer_log_from = Von
+symfony_mailer_log_to = An
+symfony_mailer_log_subject = Betreff
+symfony_mailer_log_message = Nachricht
+symfony_mailer_log_delete_confirm = Möchten Sie die Logdatei wirklich löschen?
+symfony_mailer_log_delete = Logdatei löschen
+
 
 # SMTP-Fehler-Hilfe
 symfony_mailer_error_auth = Der Benutzername oder das Passwort ist falsch. Bitte überprüfen Sie die SMTP-Zugangsdaten.
