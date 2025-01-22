@@ -345,37 +345,35 @@ Im Symfony Mailer, werden die E-Mail Anhänge nicht über ein Array von Datei-Pf
 
 **`DataPart`**: Stellt einen E-Mail-Anhang dar, der aus Daten (z.B. einem String) erzeugt wird, nicht aus einer Datei. Bedeutet, dass Daten direkt in den Anhang eingebettet werden, ohne eine temporäre Datei auf der Festplatte anlegen zu müssen.
 
-       ```php
-       use Symfony\Component\Mime\Part\DataPart;
+```php
+use Symfony\Component\Mime\Part\DataPart;
 
-       // Ein Text-Anhang:
-        new DataPart('Dies ist der Inhalt des Textanhangs.', 'text/plain', 'mytext.txt');
+// Ein Text-Anhang:
+new DataPart('Dies ist der Inhalt des Textanhangs.', 'text/plain', 'mytext.txt');
 
-        // Ein Inline-Bild (siehe unten):
-        new DataPart(file_get_contents('/pfad/zum/bild.png'), 'image/png', 'inline-image');
-        ```
+// Ein Inline-Bild (siehe unten):
+new DataPart(file_get_contents('/pfad/zum/bild.png'), 'image/png', 'inline-image');
+```
 
 **`File`**: Stellt einen Anhang dar, der aus einer Datei auf der Festplatte erzeugt wird. Das ist vergleichbar mit dem Anhängen von Dateien in PHPMailer, aber auch hier wird anstelle eines Dateipfades, ein File Objekt übergeben.
 
-         ```php
-         use Symfony\Component\Mime\Part\File;
-        new File('/pfad/zu/datei.pdf');
-         ```
+```php
+use Symfony\Component\Mime\Part\File;
+new File('/pfad/zu/datei.pdf');
+```
 ### Inline-Bilder mit `DataPart`
 
    Um Inline-Bilder zu verwenden, werden die Bilder ebenfalls als `DataPart` hinzugefügt. Hier ist der Knackpunkt:
 
-    1.  **Einzigartige ID (`cid`):**
-        `cid:` (Content-ID) als URI im `<img>`-Tag (z.B. `<img src="cid:inline-image">`).
-    2.  **`DataPart`:** `DataPart` Instanz mit den Bilddaten, dem Bildtyp und der gleichen ID als Dateiname.
-   3.  **Zuordnung:** Der Mail Client verknüpft den String `inline-image` in deinem HTML mit dem korrespondierenden `DataPart` Objekt.
+1.  **Einzigartige ID (`cid`):** `cid:` (Content-ID) als URI im `<img>`-Tag (z.B. `<img src="cid:inline-image">`).
+2.  **`DataPart`:** `DataPart` Instanz mit den Bilddaten, dem Bildtyp und der gleichen ID als Dateiname.
+3.  **Zuordnung:** Der Mail Client verknüpft den String `inline-image` in deinem HTML mit dem korrespondierenden `DataPart` Objekt.
 
-  ```php
+```php
    $email->html('<img src="cid:inline-image" alt="Inline Bild">')
    ->addPart(new DataPart(file_get_contents('/path/to/your/image.png'), 'image/png', 'inline-image'));
-   ```
-
-   In diesem Beispiel wird der Inhalt der Bilddatei `/path/to/your/image.png` als Inline-Bild an die E-Mail angehängt.
+```
+In diesem Beispiel wird der Inhalt der Bilddatei `/path/to/your/image.png` als Inline-Bild an die E-Mail angehängt.
 
 ## Fehlerbehebung
 
