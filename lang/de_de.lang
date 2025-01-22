@@ -84,3 +84,4 @@ symfony_mailer_error_ssl = Es gab einen Fehler mit der SSL/TLS-Verschlüsselung.
 symfony_mailer_error_relay = Der SMTP-Server verweigert die Weiterleitung. Möglicherweise müssen Sie sich authentifizieren oder die IP-Adresse ist nicht freigegeben.
 symfony_mailer_error_sender = Die Absenderadresse wurde vom Server abgelehnt. Überprüfen Sie die Absenderadresse oder ob Sie berechtigt sind, unter dieser Adresse zu versenden.
 symfony_mailer_error_starttls = Es gab einen Fehler beim Aufbau der verschlüsselten Verbindung. Möglicherweise unterstützt der Server kein STARTTLS oder die Verschlüsselungseinstellung ist falsch.
+symfony_mailer_debug_info = Debug-Informationen:
