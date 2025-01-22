@@ -21,13 +21,13 @@ symfony_mailer_smtp_auth = Authentifizierung
 symfony_mailer_smtp_auth_enabled = Authentifizierung aktivieren
 symfony_mailer_smtp_username = Benutzername
 symfony_mailer_smtp_password = Passwort
-symfony_mailer_smtp_debug = Debug-Modus
-symfony_mailer_smtp_debug_enabled = Debug-Modus aktivieren
-symfony_mailer_smtp_debug_notice = Im Debug-Modus werden detaillierte Verbindungsinformationen angezeigt. Im Produktivbetrieb sollte der Debug-Modus deaktiviert bleiben.
+symfony_mailer_smtp_debug = Erweiterte Fehlerausgabe
+symfony_mailer_smtp_debug_enabled = Erweiterte Fehlerausgabe aktivieren
+symfony_mailer_smtp_debug_notice = Bei aktivierter Option werden zusätzliche technische Details bei Fehlern angezeigt
 
 # Test-Panel
 symfony_mailer_test_title = Verbindungstests
-symfony_mailer_test_info = Hier können Sie die SMTP- und IMAP-Verbindungen testen und eine Test-E-Mail versenden. Wenn der Debug-Modus aktiviert ist, werden zusätzliche Verbindungsinformationen angezeigt.
+symfony_mailer_test_info = Hier können Sie die SMTP- und IMAP-Verbindungen testen und eine Test-E-Mail versenden.
 symfony_mailer_smtp_test = SMTP-Tests
 symfony_mailer_test_connection = SMTP-Verbindung testen
 symfony_mailer_test_mail_send = Test-E-Mail senden
@@ -37,7 +37,9 @@ symfony_mailer_test_mail_error = Beim Versenden der Test-E-Mail ist ein Fehler a
 symfony_mailer_test_mail_default_subject = REDAXO Symfony Mailer Test
 symfony_mailer_test_mail_greeting = Hallo,
 symfony_mailer_test_mail_body = dies ist eine Test-E-Mail von der Website {0}.
-symfony_mailer_debug_info = Debug-Informationen
+symfony_mailer_error_details = Fehlerdetails
+symfony_mailer_test_connection_success = SMTP-Verbindung erfolgreich hergestellt
+symfony_mailer_test_connection_error = SMTP-Verbindung fehlgeschlagen
 
 # IMAP
 symfony_mailer_imap_title = IMAP-Archiv
@@ -67,14 +69,4 @@ symfony_mailer_archive_emails = E-Mails archivieren
 symfony_mailer_archive_enabled = Archivierung aktivieren
 symfony_mailer_log_status = Status
 symfony_mailer_log_date = Datum
-symfony_mailer_log_from = Von
-symfony_mailer_log_to = An
-symfony_mailer_log_subject = Betreff
-symfony_mailer_log_message = Nachricht
-symfony_mailer_log_delete = Log löschen
-symfony_mailer_log_delete_confirm = Soll das Log wirklich gelöscht werden?
-symfony_mailer_log_deleted = Das Log wurde erfolgreich gelöscht
-symfony_mailer_log_delete_error = Das Log konnte nicht gelöscht werden
-
-# Rechte
-perm_general_symfony_mailer[] = Symfony Mailer Einstellungen
+symfony_mailer_log_from
