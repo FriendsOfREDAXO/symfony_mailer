@@ -16,6 +16,8 @@ use rex_file;
 use rex_dir;
 use rex_logger;
 use Symfony\Component\Yaml\Yaml;
+use function is_dir;
+use function is_file;
 
 class RexSymfonyMailer
 {
@@ -25,6 +27,10 @@ class RexSymfonyMailer
     private string $fromName;
     private bool $archive;
     private bool $imapArchive;
+
+    /**
+     * @var array<string, mixed>
+     */
     private array $errorInfo = [];
     private bool $debug;
     private bool $detourMode;
@@ -84,6 +90,11 @@ class RexSymfonyMailer
         $this->initializeMailer();
     }
 
+    /**
+     * Initializes the mailer instance using the configured DSN.
+     *
+     * @throws \RuntimeException if mailer initialization fails.
+     */
     private function initializeMailer(): void
     {
         $dsn = $this->buildDsn();
@@ -92,10 +103,17 @@ class RexSymfonyMailer
             $this->mailer = new Mailer($transport);
         } catch (\Exception $e) {
             $this->logError('Mailer initialization failed', $e);
-            throw new \RuntimeException('Failed to initialize mailer: ' . $e->getMessage());
+            throw new \RuntimeException('Failed to initialize mailer: ' . $e->getMessage(), 0, $e);
         }
     }
 
+    /**
+     * Builds the DSN string for the mailer.
+     *
+     * @param array<string, mixed> $smtpSettings Optional settings to override the default SMTP settings.
+     *
+     * @return string The DSN string.
+     */
     private function buildDsn(array $smtpSettings = []): string
     {
         $settings = empty($smtpSettings) ? $this->smtpSettings : $smtpSettings;
@@ -128,6 +146,13 @@ class RexSymfonyMailer
         return $dsn;
     }
 
+    /**
+     * Gets a user-friendly error hint based on the error message.
+     *
+     * @param string $error The error message.
+     *
+     * @return ?string The error hint or null if no hint found.
+     */
     private function getErrorHint(string $error): ?string
     {
         if (str_contains($error, 'authentication failed') || str_contains($error, 'Expected response code "235"')) {
@@ -157,6 +182,13 @@ class RexSymfonyMailer
         return null;
     }
 
+    /**
+     * Tests the SMTP connection using provided settings or default.
+     *
+     * @param array<string, mixed> $smtpSettings Optional settings to override the default SMTP settings.
+     *
+     * @return array<string, mixed> An array containing the test result (success or failure) and a message.
+     */
     public function testConnection(array $smtpSettings = []): array
     {
         try {
@@ -178,15 +210,29 @@ class RexSymfonyMailer
         }
     }
 
+    /**
+     * Creates a new Email instance with default from address and charset.
+     *
+     * @return Email The new Email instance.
+     */
     public function createEmail(): Email
     {
         $email = new Email();
         $email->from(new Address($this->fromAddress, $this->fromName));
-        $email->charset = $this->charset;
+        $email->charset($this->charset);
 
         return $email;
     }
 
+    /**
+     * Sends an email.
+     *
+     * @param Email $email The email to be sent.
+     * @param array<string, mixed> $smtpSettings Optional settings to override the default SMTP settings.
+     * @param string $imapFolder Optional folder to override the default imap folder.
+     *
+     * @return bool True if the email was sent successfully, false otherwise.
+     */
       public function send(Email $email, array $smtpSettings = [], string $imapFolder = ''): bool
     {
         $mailer = $this->mailer;
@@ -225,12 +271,16 @@ class RexSymfonyMailer
         }
     }
 
-
+    /**
+     * Applies the detour address to the email.
+     *
+     * @param Email $email The email to apply the detour to.
+     */
     private function applyDetour(Email $email): void
     {
         $originalTo = $email->getTo();
         $email->to(new Address($this->detourAddress, 'Detour'));
-        
+
         // Setze die ursprünglichen Empfänger in den Header, um sie im E-Mail-Client einsehen zu können.
         $originalTos = [];
         foreach ($originalTo as $address) {
@@ -239,6 +289,11 @@ class RexSymfonyMailer
           $email->getHeaders()->addTextHeader('X-Original-To', implode(', ', $originalTos));
     }
 
+    /**
+     * Archives the email to the local filesystem.
+     *
+     * @param Email $email The email to be archived.
+     */
     private function archiveEmail(Email $email): void
     {
         $dir = self::getArchiveFolder() . '/' . date('Y') . '/' . date('m');
@@ -255,6 +310,12 @@ class RexSymfonyMailer
         rex_file::put($dir . '/' . $filename, $email->toString());
     }
 
+    /**
+     * Archives the email to an IMAP folder.
+     *
+     * @param Email $email The email to be archived.
+     * @param string $folder Optional folder to override the default imap folder.
+     */
     private function archiveToImap(Email $email, string $folder = ''): void
     {
         $settings = $this->imapSettings;
@@ -276,6 +337,12 @@ class RexSymfonyMailer
         }
     }
 
+    /**
+     * Logs an error message.
+     *
+     * @param string $context The context of the error.
+     * @param \Exception $e The exception that occurred.
+     */
    private function logError(string $context, \Exception $e): void
     {
         $this->errorInfo = $this->getErrorDetails($e);
@@ -291,6 +358,13 @@ class RexSymfonyMailer
         }
     }
 
+    /**
+     * Get detailed error information from an exception.
+     *
+     * @param \Exception $e The exception to extract details from.
+     *
+     * @return array<string, mixed> An array containing the error details.
+     */
     private function getErrorDetails(\Exception $e): array
     {
         $details = [
@@ -311,6 +385,14 @@ class RexSymfonyMailer
         return $details;
     }
 
+
+    /**
+     * Logs a message to the log file.
+     *
+     * @param string $status The status of the email (OK or ERROR).
+     * @param Email $email The email that was sent.
+     * @param string $error The error message (if any).
+     */
     private function log(string $status, Email $email, string $error = ''): void
     {
         $addon = rex_addon::get('symfony_mailer');
@@ -347,16 +429,31 @@ class RexSymfonyMailer
         $log->add($data);
     }
 
+    /**
+     * Returns the error info.
+     *
+     * @return array<string,mixed> The error info.
+     */
     public function getErrorInfo(): array
     {
         return $this->errorInfo;
     }
 
+    /**
+     * Returns the path to the mail archive folder.
+     *
+     * @return string The path to the mail archive folder.
+     */
     public static function getArchiveFolder(): string
     {
         return rex_path::addonData('symfony_mailer', 'mail_archive');
     }
 
+    /**
+     * Returns the path to the log file.
+     *
+     * @return string The path to the log file.
+     */
     public static function getLogFile(): string
     {
         return rex_path::log('symfony_mailer.log');
