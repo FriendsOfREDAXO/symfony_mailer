@@ -70,3 +70,12 @@ symfony_mailer_archive_enabled = Archivierung aktivieren
 symfony_mailer_log_status = Status
 symfony_mailer_log_date = Datum
 symfony_mailer_log_from
+
+# SMTP-Fehler-Hilfe
+// in de_de.lang
+symfony_mailer_error_auth = Der Benutzername oder das Passwort ist falsch. Bitte überprüfen Sie die SMTP-Zugangsdaten.
+symfony_mailer_error_connection = Es konnte keine Verbindung zum SMTP-Server hergestellt werden. Bitte überprüfen Sie Host und Port sowie Ihre Internetverbindung.
+symfony_mailer_error_ssl = Es gab einen Fehler mit der SSL/TLS-Verschlüsselung. Möglicherweise ist die falsche Verschlüsselungsmethode gewählt oder der Server unterstützt diese nicht.
+symfony_mailer_error_relay = Der SMTP-Server verweigert die Weiterleitung. Möglicherweise müssen Sie sich authentifizieren oder die IP-Adresse ist nicht freigegeben.
+symfony_mailer_error_sender = Die Absenderadresse wurde vom Server abgelehnt. Überprüfen Sie die Absenderadresse oder ob Sie berechtigt sind, unter dieser Adresse zu versenden.
+symfony_mailer_error_starttls = Es gab einen Fehler beim Aufbau der verschlüsselten Verbindung. Möglicherweise unterstützt der Server kein STARTTLS oder die Verschlüsselungseinstellung ist falsch.
