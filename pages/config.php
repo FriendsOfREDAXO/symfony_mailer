@@ -108,22 +108,16 @@ if (rex_post('test_mail', 'boolean')) {
             $body .= 'Port: ' . $addon->getConfig('port') . "\n";
             $body .= 'Security: ' . ($addon->getConfig('security') ?: 'none') . "\n";
             
-            if ($addon->getConfig('debug') > 0) {
-                $body .= 'Debug Level: ' . $addon->getConfig('debug') . "\n";
-            }
-            
             $email->text($body);
             
             if ($mailer->send($email)) {
                 outputTestResult($addon->i18n('test_mail_sent', rex_escape($addon->getConfig('test_address'))), true);
             } else {
-                $debugInfo = $mailer->getDebugInfo();
-                $error = $addon->i18n('test_mail_error');
-                 outputTestResult($error, false, $debugInfo);
+                outputTestResult($addon->i18n('test_mail_error'), false, $mailer->getDebugInfo());
             }
             
         } catch (\Exception $e) {
-             outputTestResult($addon->i18n('test_mail_error') . '<br>' . $e->getMessage(), false);
+            outputTestResult($addon->i18n('test_mail_error') . '<br>' . $e->getMessage(), false);
         }
     }
 }
@@ -170,15 +164,10 @@ $field = $form->addTextField('password');
 $field->setLabel($addon->i18n('smtp_password'));
 $field->getAttributes()['type'] = 'password';
 
-$field = $form->addSelectField('debug');
+$field = $form->addCheckboxField('debug');
 $field->setLabel($addon->i18n('smtp_debug'));
-$select = $field->getSelect();
-$select->addOption($addon->i18n('smtp_debug_disabled'), 0);
-$select->addOption($addon->i18n('smtp_debug_client'), 1);
-$select->addOption($addon->i18n('smtp_debug_server'), 2);
-$select->addOption($addon->i18n('smtp_debug_connection'), 3);
-$select->addOption($addon->i18n('smtp_debug_lowlevel'), 4);
-$field->setNotice($addon->i18n('smtp_debug_info'));
+$field->addOption($addon->i18n('smtp_debug_enabled'), 1);
+$field->setNotice($addon->i18n('smtp_debug_notice'));
 
 // Log and Archive Settings Fieldset
 $form->addFieldset('Log & Archive');
@@ -221,45 +210,48 @@ $field->setNotice($addon->i18n('imap_folder_notice'));
 
 
 // Output form
-$fragment = new rex_fragment();
-$fragment->setVar('title', $addon->i18n('configuration'), false);
-$fragment->setVar('body', $form->get(), false);
-$content = $fragment->parse('core/page/section.php');
+echo '<section class="rex-page-section">
+    <div class="panel panel-edit">
+        <header class="panel-heading"><div class="panel-title">' . $addon->i18n('configuration') . '</div></header>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-md-8">';
 
-// Test panel
-$testContent = '
-<form action="' . rex_url::currentBackendPage() . '" method="post">
-    <div class="alert alert-info">
-        ' . $addon->i18n('test_info') . '
+echo $form->get();
+
+echo '</div>
+                <div class="col-md-4">
+                    <form action="' . rex_url::currentBackendPage() . '" method="post">
+                        <div class="panel panel-default">
+                            <header class="panel-heading"><div class="panel-title">' . $addon->i18n('test_title') . '</div></header>
+                            <div class="panel-body">
+                                <div class="alert alert-info">
+                                    ' . $addon->i18n('test_info') . '
+                                </div>
+                                
+                                <fieldset>
+                                    <legend>' . $addon->i18n('smtp_test') . '</legend>
+                                    <div class="form-group">
+                                        <button type="submit" name="test_connection" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_connection') . '</button>
+                                    </div>
+                                    <div class="form-group">
+                                        <button type="submit" name="test_mail" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_mail_send') . '</button>
+                                    </div>
+                                </fieldset>
+
+                                <fieldset>
+                                    <legend>' . $addon->i18n('imap_test') . '</legend>
+                                    <div class="form-group">
+                                        <button type="submit" name="test_imap" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_imap_connection') . '</button>
+                                    </div>
+                                </fieldset>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-    
-    <fieldset>
-        <legend>' . $addon->i18n('smtp_test') . '</legend>
-        <div class="form-group">
-            <button type="submit" name="test_connection" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_connection') . '</button>
-        </div>
-        <div class="form-group">
-            <button type="submit" name="test_mail" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_mail_send') . '</button>
-        </div>
-    </fieldset>
-
-    <fieldset class="imap-test">
-        <legend>' . $addon->i18n('imap_test') . '</legend>
-        <div class="form-group">
-            <button type="submit" name="test_imap" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_imap_connection') . '</button>
-        </div>
-    </fieldset>
-</form>';
-
-$fragment = new rex_fragment();
-$fragment->setVar('title', $addon->i18n('test_title'), false);
-$fragment->setVar('body', $testContent, false);
-$sidebar = $fragment->parse('core/page/section.php');
-
-// Output complete page
-echo '<div class="row">';
-    echo '<div class="col-md-8">' . $content . '</div>';
-    echo '<div class="col-md-4">' . $sidebar . '</div>';
-echo '</div>';
+</section>';
 
 ?>
