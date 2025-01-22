@@ -383,12 +383,16 @@ In diesem Beispiel wird der Inhalt der Bilddatei `/path/to/your/image.png` als I
 *   **Log-Einträge:** Logdatei checken, da steht mehr drin.
 *   **Debug Informationen:** Die `getDebugInfo()` Methode kann Fehlerinfos ausgeben.
 
-## Lizenz
+## Author
 
-Dieses AddOn ist unter der MIT-Lizenz lizenziert.
+**Friends Of REDAXO**
 
-## Beiträge
+* http://www.redaxo.org
+* https://github.com/FriendsOfREDAXO
 
-Beiträge zum AddOn sind willkommen. Einfach Pull Requests auf GitHub einreichen.
 
+## Credits
 
+**Project Lead**
+
+[Thomas Skerbis](https://github.com/skerbis)  
