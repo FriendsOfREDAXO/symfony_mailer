@@ -174,9 +174,9 @@ $field = $form->addTextField('username');
 $field->setLabel($addon->i18n('smtp_username'));
 
 // Korrekte Verwendung von getAttributes() für das SMTP Passwort
-$field = $form->addTextField('password');
+$field = $form->addTextField('password',null,['type'=>'password']);
 $field->setLabel($addon->i18n('smtp_password'));
-$field->getAttributes()['type'] = 'password';
+
 
 $field = $form->addCheckboxField('debug');
 $field->setLabel($addon->i18n('smtp_debug'));
@@ -215,9 +215,9 @@ $field = $form->addTextField('imap_username');
 $field->setLabel($addon->i18n('imap_username'));
 
 // Korrekte Verwendung von getAttributes() für das IMAP Passwort
-$field = $form->addTextField('imap_password');
+$field = $form->addTextField('imap_password',null,['type'=>'password']);
 $field->setLabel($addon->i18n('imap_password'));
-$field->getAttributes()['type'] = 'password';
+
 
 $field = $form->addTextField('imap_folder');
 $field->setLabel($addon->i18n('imap_folder'));
