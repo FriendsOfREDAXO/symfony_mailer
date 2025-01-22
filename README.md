@@ -1,28 +1,26 @@
 # Symfony Mailer AddOn für REDAXO 🐣
 
-Tschüss PHPMailer! 👋 Dieses REDAXO AddOn bringt den Symfony Mailer ins Spiel, um E-Mails aus REDAXO-Projekten zu versenden. Es bietet eine super flexible Konfiguration für verschiedene SMTP-Einstellungen, E-Mail-Archivierung und Logging.
+Bye-bye PHPMailer! 👋 Dieses REDAXO AddOn bringt den Symfony Mailer ins Spiel, um E-Mails in REDAXO-Projekten zu rocken. Das Ding hat 'ne mega flexible Konfiguration für verschiedene SMTP-Einstellungen, E-Mail-Archivierung und Logging am Start.
 
-`mail()` und `sendmail` haben wir hier einfach mal weggelassen. Dafür dürft ihr hier in IMAP-Ordnern speichern. 
-
-Okay, hier ist eine Ergänzung zur `README.md`, die die neuen YForm Actions `rex_yform_action_symfony_mailer` und `rex_yform_action_symfony_mailer_tpl2email` ab der Überschrift "## Verwendung" beschreibt:
+`mail()` und `sendmail` haben wir mal links liegen gelassen. Stattdessen kannst du hier in IMAP-Ordnern speichern.
 
 ## Features
 
--   **Symfony Mailer Integration:** Nutzt die mächtige Symfony Mailer Library für zuverlässigen E-Mail-Versand.
+-   **Symfony Mailer Integration:** Nutzt die Power der Symfony Mailer Library für 'nen zuverlässigen E-Mail-Versand.
 -   **SMTP Konfiguration:**
     -   SMTP-Einstellungen wie Host, Port, Verschlüsselung (SSL/TLS), Authentifizierung mit Benutzername und Passwort sind easy konfigurierbar.
-    -   Dynamische SMTP-Einstellungen pro E-Mail sind auch kein Problem.
--   **E-Mail-Archivierung:** Optionale Speicherung der versendeten E-Mails als `.eml`-Dateien im Dateisystem (nach Jahren und Monaten strukturiert).
+    -   Dynamische SMTP-Einstellungen pro E-Mail? Kein Ding!
+-   **E-Mail-Archivierung:** Optional landen die versendeten E-Mails als `.eml`-Dateien im Dateisystem (schön nach Jahren und Monaten sortiert).
 -   **IMAP-Archivierung:**
-    -   Optional werden die E-Mails in einem konfigurierbaren IMAP-Ordner archiviert.
-    -   Dynamische IMAP-Ordner pro E-Mail sind möglich.
--   **Logging:** Protokolliert die versendeten E-Mails (Status, Absender, Empfänger, Betreff, Fehlermeldungen) in einer Logdatei.
+    -   Optional werden die Mails in einem konfigurierbaren IMAP-Ordner abgelegt.
+    -   Dynamische IMAP-Ordner pro E-Mail sind auch machbar.
+-   **Logging:** Protokolliert die versendeten E-Mails (Status, Absender, Empfänger, Betreff, Fehlermeldungen) in 'ner Logdatei.
 -   **Testverbindung:** Checkt die SMTP-Verbindung, auch mit eigenen Einstellungen.
 -   **Einfache Bedienung:** Intuitive Konfiguration im REDAXO-Backend.
 -   **Flexibilität:** Nutze verschiedene SMTP Server mit dynamischen Einstellungen pro Mail.
--   **HTML E-Mails:** Versende HTML-formatierte E-Mails.
--   **Attachments:** Füge Dateien an E-Mails an.
--   **Inline-Bilder:** Betten Bilder direkt in den HTML-Inhalt der E-Mail ein.
+-   **HTML E-Mails:** Schick HTML-formatierte Mails raus.
+-   **Attachments:** Häng Dateien an E-Mails an.
+-   **Inline-Bilder:** Betten Bilder direkt in den HTML-Inhalt der Mail ein.
 
 ## Installation
 
@@ -33,15 +31,15 @@ Okay, hier ist eine Ergänzung zur `README.md`, die die neuen YForm Actions `rex
 
 ## Konfiguration
 
-Die folgenden Konfigurationsoptionen sind im AddOn-Konfigurationsbereich verfügbar. Diese Einstellungen dienen als Standardwerte, die beim Versenden der E-Mails benutzt werden, wenn keine dynamischen Einstellungen übergeben werden:
+Die folgenden Konfigurationsoptionen stehen im AddOn-Konfigurationsbereich zur Verfügung. Diese Einstellungen dienen als Standardwerte, die beim Versenden der E-Mails genutzt werden, wenn keine dynamischen Einstellungen übergeben werden:
 
 ### Allgemeine Einstellungen
 
-*   **Absender-E-Mail:** Die Standard-E-Mail-Adresse, von der aus E-Mails gesendet werden sollen.
+*   **Absender-E-Mail:** Die Standard-E-Mail-Adresse, von der Mails gesendet werden sollen.
 *   **Absender-Name:** Der Name, der als Absender angezeigt werden soll.
 *   **Zeichensatz:** Der Zeichensatz für E-Mails (Standard: `utf-8`).
 *   **E-Mail-Archivierung:** Speichert E-Mails als EML-Dateien im Dateisystem.
-*   **IMAP Archivierung:** Aktiviert die Archivierung der E-Mails in einem IMAP-Ordner.
+*   **IMAP Archivierung:** Aktiviert die Archivierung der Mails in einem IMAP-Ordner.
 *   **Logging:** Schreibt die E-Mail-Versendung in eine Logdatei.
 
 ### SMTP Einstellungen
@@ -63,7 +61,7 @@ Die folgenden Konfigurationsoptionen sind im AddOn-Konfigurationsbereich verfüg
 
 ## Verwendung
 
-Um das AddOn in Ihrem REDAXO-Projekt zu verwenden, instanziieren Sie die `RexSymfonyMailer` Klasse und verwenden Sie die Methoden `createEmail()` und `send()`. Die `send()` Methode bietet optionale Parameter für dynamische SMTP- und IMAP-Einstellungen.
+Um das AddOn in deinem REDAXO-Projekt zu verwenden, schnapp dir die `RexSymfonyMailer` Klasse und nutze die Methoden `createEmail()` und `send()`. Die `send()` Methode hat optionale Parameter für dynamische SMTP- und IMAP-Einstellungen.
 
 **Beispiel 1: E-Mail mit Standard-Einstellungen senden:**
 
@@ -240,16 +238,16 @@ if ($mailer->send($email)) {
 
 ## YForm Actions
 
-Dieses AddOn stellt zwei YForm Actions bereit, um E-Mails aus YForm Formularen zu versenden: `rex_yform_action_symfony_mailer` und `rex_yform_action_symfony_mailer_tpl2email`.
+Dieses AddOn stellt zwei YForm Actions bereit, um E-Mails aus YForm Formularen zu senden: `rex_yform_action_symfony_mailer` und `rex_yform_action_symfony_mailer_tpl2email`.
 
 ### `rex_yform_action_symfony_mailer`
 
-Diese Action ermöglicht es, E-Mails direkt aus YForm-Formularen zu versenden. Sie bietet folgende Optionen:
+Mit dieser Action lassen sich E-Mails direkt aus YForm-Formularen raushauen. Sie hat folgende Optionen:
 
 *   **`from@email.de`:** Die Absender-E-Mail-Adresse. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
-*   **`to@email.de[,to2@email.de]`:**  Die Empfänger-E-Mail-Adresse(n), kommagetrennt. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
-*   **`cc@email.de[,cc2@email.de]`:** (Optional) Die CC-Empfänger-E-Mail-Adresse(n), kommagetrennt. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
-*   **`bcc@email.de[,bcc2@email.de]`:** (Optional) Die BCC-Empfänger-E-Mail-Adresse(n), kommagetrennt. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
+*   **`to@email.de[,to2@email.de]`:**  Die Empfänger-E-Mail-Adresse(n), mit Komma getrennt. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
+*   **`cc@email.de[,cc2@email.de]`:** (Optional) Die CC-Empfänger-E-Mail-Adresse(n), mit Komma getrennt. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
+*   **`bcc@email.de[,bcc2@email.de]`:** (Optional) Die BCC-Empfänger-E-Mail-Adresse(n), mit Komma getrennt. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
 *   **`Mailsubject`:** Der Betreff der E-Mail. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
 *   **`Mailbody###name###`:** Der Inhalt der E-Mail. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
 *   **`text/html`:**  (Optional) Gibt an, ob der E-Mail-Body als `text` (Standard) oder `html` interpretiert werden soll.
@@ -284,7 +282,7 @@ $yform->setActionField(
 
 ### `rex_yform_action_symfony_mailer_tpl2email`
 
-Diese Action verwendet E-Mail-Vorlagen, die über das YForm-E-Mail-Template-AddOn konfiguriert werden. Sie bietet folgende Optionen:
+Diese Action nutzt E-Mail-Vorlagen, die im YForm-E-Mail-Template-AddOn erstellt werden. Sie hat folgende Optionen:
 
 *   **`emailtemplate`:** Der Name der E-Mail-Vorlage.
 *   **`[email@domain.de/email_label]`:** Die Empfänger-E-Mail-Adresse oder ein Feldname, der die E-Mail-Adresse enthält. Kann Platzhalter wie `###feldname###` oder `+++feldname+++` enthalten.
@@ -327,8 +325,6 @@ $yform->setActionField(
 );
 ```
 
-
-
 ## Wichtige Hinweise
 
 -   Standard-SMTP- und IMAP-Einstellungen im AddOn-Konfigurationsbereich konfigurieren.
@@ -341,9 +337,9 @@ $yform->setActionField(
 
 ### `DataPart` und `File` - Anhänge und Inline-Bilder im Detail
 
-Im Symfony Mailer, werden die E-Mail Anhänge nicht über ein Array von Datei-Pfaden übergeben, sondern mit Objekten der Klasse `DataPart` oder `File`. Dies ist ein wichtiger Unterschied zu PHPMailer, mit dem viele REDAXO-Nutzer vertraut sind.
+Im Symfony Mailer, werden die E-Mail Anhänge nicht über ein Array von Datei-Pfaden übergeben, sondern mit Objekten der Klasse `DataPart` oder `File`. Das ist ein wichtiger Unterschied zum PHPMailer, mit dem viele REDAXO-Nutzer vertraut sind.
 
-**`DataPart`**: Stellt einen E-Mail-Anhang dar, der aus Daten (z.B. einem String) erzeugt wird, nicht aus einer Datei. Bedeutet, dass Daten direkt in den Anhang eingebettet werden, ohne eine temporäre Datei auf der Festplatte anlegen zu müssen.
+**`DataPart`**: Stellt einen E-Mail-Anhang dar, der aus Daten (z.B. einem String) erzeugt wird, nicht aus einer Datei. Das bedeutet, dass Daten direkt in den Anhang eingebettet werden, ohne eine temporäre Datei auf der Festplatte anlegen zu müssen.
 
 ```php
 use Symfony\Component\Mime\Part\DataPart;
@@ -355,7 +351,7 @@ new DataPart('Dies ist der Inhalt des Textanhangs.', 'text/plain', 'mytext.txt')
 new DataPart(file_get_contents('/pfad/zum/bild.png'), 'image/png', 'inline-image');
 ```
 
-**`File`**: Stellt einen Anhang dar, der aus einer Datei auf der Festplatte erzeugt wird. Das ist vergleichbar mit dem Anhängen von Dateien in PHPMailer, aber auch hier wird anstelle eines Dateipfades, ein File Objekt übergeben.
+**`File`**: Stellt einen Anhang dar, der aus einer Datei auf der Festplatte erzeugt wird. Das ist vergleichbar mit dem Anhängen von Dateien im PHPMailer, aber auch hier wird anstelle eines Dateipfades, ein File Objekt übergeben.
 
 ```php
 use Symfony\Component\Mime\Part\File;
@@ -363,7 +359,7 @@ new File('/pfad/zu/datei.pdf');
 ```
 ### Inline-Bilder mit `DataPart`
 
-   Um Inline-Bilder zu verwenden, werden die Bilder ebenfalls als `DataPart` hinzugefügt. Hier ist der Knackpunkt:
+Um Inline-Bilder zu verwenden, werden die Bilder ebenfalls als `DataPart` hinzugefügt. Hier ist der Trick:
 
 1.  **Einzigartige ID (`cid`):** `cid:` (Content-ID) als URI im `<img>`-Tag (z.B. `<img src="cid:inline-image">`).
 2.  **`DataPart`:** `DataPart` Instanz mit den Bilddaten, dem Bildtyp und der gleichen ID als Dateiname.
@@ -375,10 +371,102 @@ new File('/pfad/zu/datei.pdf');
 ```
 In diesem Beispiel wird der Inhalt der Bilddatei `/path/to/your/image.png` als Inline-Bild an die E-Mail angehängt.
 
+Absolut! Hier ist eine Unterrubrik für die Readme, die die Verwendung der `custom_config.yml` Datei erklärt:
+
+## 2. Konfiguration über `custom_config.yml` z.B. für eine lokale Entwicklungsumgebung
+
+Das AddOn bietet die Möglichkeit, die SMTP- und IMAP-Einstellungen über eine externe Konfigurationsdatei zu definieren. Dies erlaubt eine flexible Anpassung der Einstellungen, ohne direkt in die AddOn-Konfiguration einzugreifen. Die Einstellungen in der `custom_config.yml` Datei überschreiben die Einstellungen der AddOn-Konfiguration.
+
+### 2.1 Erstellung der `custom_config.yml`
+
+1.  Erstelle eine Datei namens `custom_config.yml` im Ordner `data/addons/symfony_mailer/`.
+2.  Füge die gewünschten Einstellungen im YAML-Format hinzu.
+3.  **Wichtig**: Alle Parameter aus der Addon-Konfiguration müssen in der `custom_config.yml` vorhanden sein, da sonst die Parameter der Addon-Konfiguration verwendet werden. Es wird immer die gesamte Konfiguration überschrieben.
+
+### 2.2 Struktur der `custom_config.yml`
+
+Hier ist ein Beispiel für die Struktur der `custom_config.yml` Datei:
+
+```yaml
+from: "your-custom-from@example.com"
+name: "Your Custom Name"
+charset: "utf-8"
+archive: true
+imap_archive: false
+debug: true
+host: "your.custom.smtp.host"
+port: 587
+security: "tls"
+auth: true
+username: "your.custom.smtp.username"
+password: "your.custom.smtp.password"
+imap_host: "your.custom.imap.host"
+imap_port: 993
+imap_username: "your.custom.imap.username"
+imap_password: "your.custom.imap.password"
+imap_folder: "INBOX.Sent"
+```
+
+**Erläuterung der Parameter:**
+
+*   **`from`**: Die Absender-E-Mail-Adresse.
+*   **`name`**: Der Name des Absenders.
+*   **`charset`**: Der Zeichensatz für E-Mails (standardmäßig `utf-8`).
+*   **`archive`**: `true` um versendete E-Mails in einem Archivordner zu speichern, ansonsten `false`.
+*   **`imap_archive`**: `true` um versendete E-Mails in einem IMAP-Ordner zu speichern, ansonsten `false`.
+*   **`debug`**: `true` um zusätzliche Debug-Informationen in Fehlermeldungen anzuzeigen, ansonsten `false`.
+*   **`host`**: Die Adresse des SMTP-Servers.
+*   **`port`**: Der Port des SMTP-Servers.
+*   **`security`**: Die Sicherheitsoption für die SMTP-Verbindung (`tls`, `ssl` oder leer für keine Verschlüsselung).
+*   **`auth`**: `true` um SMTP-Authentifizierung zu aktivieren, ansonsten `false`.
+*   **`username`**: Der Benutzername für die SMTP-Authentifizierung.
+*   **`password`**: Das Passwort für die SMTP-Authentifizierung.
+*   **`imap_host`**: Die Adresse des IMAP-Servers.
+*   **`imap_port`**: Der Port des IMAP-Servers (standardmäßig `993`).
+*   **`imap_username`**: Der Benutzername für die IMAP-Authentifizierung.
+*   **`imap_password`**: Das Passwort für die IMAP-Authentifizierung.
+*   **`imap_folder`**: Der IMAP-Ordner, in dem E-Mails gespeichert werden sollen (standardmäßig `Sent`).
+
+### 2.3 Priorisierung der Konfiguration
+
+Die Konfigurationseinstellungen werden in folgender Reihenfolge geladen und überschrieben:
+
+1.  **REDAXO AddOn Konfiguration**: Die Standardwerte werden aus der AddOn Konfiguration geladen.
+2.  **`custom_config.yml`**: Wenn die Datei existiert, werden die Einstellungen aus dieser Datei geladen. Sie überschreiben die Standardeinstellungen der Addon Konfiguration.
+
+### 2.4 Auswirkungen auf die Konfigurationsseite
+
+Wenn die `custom_config.yml` Datei existiert, wird auf der Konfigurationsseite des Addons eine Warnmeldung angezeigt. Die Formularfelder für die SMTP- und IMAP-Einstellungen werden ausgeblendet, da diese nun über die externe Konfigurationsdatei gesteuert werden. Die Logging-Einstellungen bleiben weiterhin aktiv.
+
+### 2.5 Manuelle Zugangsdaten bei der `send()` Methode
+
+Die Klasse `RexSymfonyMailer` erlaubt die Übergabe von SMTP-Zugangsdaten über die `send()` Methode. Die übergebenen Einstellungen werden genutzt um einen neuen `Mailer` zu erstellen, der temporär für den Versand der E-Mail genutzt wird. Die globalen Einstellungen der Klasse, die in der `custom_config.yml` oder der AddOn Konfiguration definiert wurden, bleiben davon unberührt.
+
+```php
+$mailer = new \FriendsOfRedaxo\SymfonyMailer\RexSymfonyMailer();
+
+$email = $mailer->createEmail();
+$email->to('empfaenger@example.com');
+$email->subject('Test-Mail mit anderen Zugangsdaten');
+$email->text('Dies ist eine Test-Mail.');
+
+$smtpSettings = [
+    'host' => 'anderer.smtp.host',
+    'port' => 587,
+    'security' => 'tls',
+    'auth' => true,
+    'username' => 'anderer_benutzer',
+    'password' => 'anderes_passwort',
+];
+
+$success = $mailer->send($email, $smtpSettings);
+```
+
+
 ## Fehlerbehebung
 
 *   **Fehler beim Senden:** Check die Standard-Konfigurationen (Host, Port, Benutzername, Passwort) oder die eigenen SMTP-Einstellungen.
-*   **Keine E-Mails im Archiv:** Sicherstellen, dass die E-Mail-Archivierung aktiv ist und die Ordnerstruktur passt.
+*   **Keine E-Mails im Archiv:** Check ob die E-Mail-Archivierung aktiv ist und die Ordnerstruktur passt.
 *   **Fehler bei der IMAP-Archivierung:** Check die Standard-IMAP-Einstellungen oder den eigenen IMAP-Ordner. Der Ordner muss auf dem Server existieren.
 *   **Log-Einträge:** Logdatei checken, da steht mehr drin.
 *   **Debug Informationen:** Die `getDebugInfo()` Methode kann Fehlerinfos ausgeben.
@@ -395,4 +483,4 @@ In diesem Beispiel wird der Inhalt der Bilddatei `/path/to/your/image.png` als I
 
 **Project Lead**
 
-[Thomas Skerbis](https://github.com/skerbis)  
+[Thomas Skerbis](https://github.com/skerbis)

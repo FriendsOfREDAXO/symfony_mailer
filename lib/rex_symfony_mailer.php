@@ -15,6 +15,7 @@ use rex_log_file;
 use rex_file;
 use rex_dir;
 use rex_logger;
+use Symfony\Component\Yaml\Yaml;
 
 class RexSymfonyMailer
 {
@@ -40,29 +41,41 @@ class RexSymfonyMailer
     public function __construct()
     {
         $addon = rex_addon::get('symfony_mailer');
+        $customConfigPath = rex_path::addonData('symfony_mailer', 'custom_config.yml');
+        $customConfig = [];
 
-        $this->fromAddress = $addon->getConfig('from');
-        $this->fromName = $addon->getConfig('name');
-        $this->charset = $addon->getConfig('charset', 'utf-8');
-        $this->archive = (bool)$addon->getConfig('archive', false);
-        $this->imapArchive = (bool)$addon->getConfig('imap_archive', false);
-        $this->debug = (bool)$addon->getConfig('debug', false);
+        if (file_exists($customConfigPath)) {
+            try {
+                $customConfig = Yaml::parseFile($customConfigPath);
+            } catch (\Exception $e) {
+                rex_logger::log('symfony_mailer', 'error', 'Failed to parse custom_config.yml: ' . $e->getMessage());
+            }
+        }
+
+        // Laden der Konfiguration - Custom Config überschreibt Addon Config
+        $this->fromAddress = $customConfig['from'] ?? $addon->getConfig('from');
+        $this->fromName = $customConfig['name'] ?? $addon->getConfig('name');
+        $this->charset = $customConfig['charset'] ?? $addon->getConfig('charset', 'utf-8');
+        $this->archive = (bool)($customConfig['archive'] ?? $addon->getConfig('archive', false));
+        $this->imapArchive = (bool)($customConfig['imap_archive'] ?? $addon->getConfig('imap_archive', false));
+        $this->debug = (bool)($customConfig['debug'] ?? $addon->getConfig('debug', false));
+
 
         $this->smtpSettings = [
-            'host' => $addon->getConfig('host'),
-            'port' => $addon->getConfig('port'),
-            'security' => $addon->getConfig('security'),
-            'auth' => $addon->getConfig('auth'),
-            'username' => $addon->getConfig('username'),
-            'password' => $addon->getConfig('password'),
+            'host' => $customConfig['host'] ?? $addon->getConfig('host'),
+            'port' => $customConfig['port'] ?? $addon->getConfig('port'),
+            'security' => $customConfig['security'] ?? $addon->getConfig('security'),
+            'auth' => $customConfig['auth'] ?? $addon->getConfig('auth'),
+            'username' => $customConfig['username'] ?? $addon->getConfig('username'),
+            'password' => $customConfig['password'] ?? $addon->getConfig('password'),
         ];
 
         $this->imapSettings = [
-            'host' => $addon->getConfig('imap_host'),
-            'port' => $addon->getConfig('imap_port', 993),
-            'username' => $addon->getConfig('imap_username'),
-            'password' => $addon->getConfig('imap_password'),
-            'folder' => $addon->getConfig('imap_folder', 'Sent')
+             'host' => $customConfig['imap_host'] ?? $addon->getConfig('imap_host'),
+            'port' => $customConfig['imap_port'] ?? $addon->getConfig('imap_port', 993),
+            'username' => $customConfig['imap_username'] ?? $addon->getConfig('imap_username'),
+            'password' => $customConfig['imap_password'] ?? $addon->getConfig('imap_password'),
+            'folder' => $customConfig['imap_folder'] ?? $addon->getConfig('imap_folder', 'Sent')
         ];
 
         $this->initializeMailer();
