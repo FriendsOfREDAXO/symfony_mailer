@@ -4,23 +4,24 @@ Bye-bye PHPMailer! 👋 Dieses REDAXO AddOn bringt den Symfony Mailer ins Spiel,
 
 `mail()` und `sendmail` haben wir mal links liegen gelassen. Stattdessen kannst du hier in IMAP-Ordnern speichern.
 
-## Features
+## Features im Überblick
 
--   **Symfony Mailer Integration:** Nutzt die Power der Symfony Mailer Library für 'nen zuverlässigen E-Mail-Versand.
--   **SMTP Konfiguration:**
-    -   SMTP-Einstellungen wie Host, Port, Verschlüsselung (SSL/TLS), Authentifizierung mit Benutzername und Passwort sind easy konfigurierbar.
-    -   Dynamische SMTP-Einstellungen pro E-Mail? Kein Ding!
--   **E-Mail-Archivierung:** Optional landen die versendeten E-Mails als `.eml`-Dateien im Dateisystem (schön nach Jahren und Monaten sortiert).
--   **IMAP-Archivierung:**
-    -   Optional werden die Mails in einem konfigurierbaren IMAP-Ordner abgelegt.
-    -   Dynamische IMAP-Ordner pro E-Mail sind auch machbar.
--   **Logging:** Protokolliert die versendeten E-Mails (Status, Absender, Empfänger, Betreff, Fehlermeldungen) in 'ner Logdatei.
--   **Testverbindung:** Checkt die SMTP-Verbindung, auch mit eigenen Einstellungen.
--   **Einfache Bedienung:** Intuitive Konfiguration im REDAXO-Backend.
--   **Flexibilität:** Nutze verschiedene SMTP Server mit dynamischen Einstellungen pro Mail.
--   **HTML E-Mails:** Schick HTML-formatierte Mails raus.
--   **Attachments:** Häng Dateien an E-Mails an.
--   **Inline-Bilder:** Betten Bilder direkt in den HTML-Inhalt der Mail ein.
+| Feature                               | Beschreibung                                                                                                                                        |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Symfony Mailer Integration**        | Nutzt die Power der Symfony Mailer Library für 'nen zuverlässigen E-Mail-Versand.                                                                 |
+| **SMTP Konfiguration**                | Konfigurierbare SMTP-Einstellungen wie Host, Port, Verschlüsselung (SSL/TLS), Authentifizierung mit Benutzername und Passwort. Dynamische Einstellungen pro E-Mail möglich. |
+| **E-Mail-Archivierung**               | Optionale Speicherung versendeter E-Mails als `.eml`-Dateien im Dateisystem, sortiert nach Jahren und Monaten.                                     |
+| **IMAP-Archivierung**                | Optionale Ablage der Mails in einem konfigurierbaren IMAP-Ordner. Dynamische IMAP-Ordner pro E-Mail sind möglich.                                 |
+| **Logging**                            | Protokolliert versendete E-Mails (Status, Absender, Empfänger, Betreff, Fehlermeldungen) in einer Logdatei.                                       |
+| **Testverbindung**                    | Überprüft die SMTP-Verbindung, auch mit eigenen Einstellungen.                                                                                    |
+| **Detour-Modus**                      | Leitet alle E-Mails an eine konfigurierbare Testadresse um, nützlich für Testumgebungen.                                                        |
+| **Einfache Bedienung**                | Intuitive Konfiguration im REDAXO-Backend.                                                                                                          |
+| **Flexibilität**                      | Nutze verschiedene SMTP Server mit dynamischen Einstellungen pro Mail.                                                                              |
+| **HTML E-Mails**                     | Versende HTML-formatierte Mails.                                                                                                                  |
+| **Anhänge**                          | Hänge Dateien an E-Mails an.                                                                                                                       |
+| **Inline-Bilder**                     | Betten Bilder direkt in den HTML-Inhalt der Mail ein.                                                                                               |
+| **YForm Actions**                      | Stellt zwei YForm Actions bereit, um E-Mails aus YForm-Formularen zu senden (`rex_yform_action_symfony_mailer` und `rex_yform_action_symfony_mailer_tpl2email`).|
+| **Externe Konfiguration**             | SMTP- und IMAP-Einstellungen über `custom_config.yml` definierbar, um z.B. lokale Entwicklungsumgebungen zu konfigurieren.  |
 
 ## Installation
 
@@ -262,7 +263,7 @@ PIPE
 action|symfony_mailer|from@example.com|to@example.com|cc@example.com|bcc@example.com|Betreff|Hallo ###name###!|text|{"host":"mail.example.com", "port":587, "security":"tls", "auth":true, "username":"testuser", "password":"testpassword"}|"MyCustomSentFolder"|[{"type":"file", "path":"/path/to/file.pdf"}, {"type":"data", "data":"Dies ist ein Textinhalt", "contentType":"text/plain", "filename":"mytext.txt"}]
 ```
 
-PHP 
+PHP
 ```php
 $yform->setActionField(
     'symfony_mailer',
@@ -311,8 +312,8 @@ PIPE
 action|symfony_mailer_tpl2email|mein_email_template|email@example.com|Name|E-Mail konnte nicht gesendet werden|{"host":"mail.example.com", "port":587, "security":"tls", "auth":true, "username":"testuser", "password":"testpassword"}|"MyCustomSentFolder"
 ```
 
-PHP 
-```php 
+PHP
+```php
 $yform->setActionField(
     'symfony_mailer_tpl2email',
     'mein_email_template', // template_name
@@ -370,8 +371,6 @@ Um Inline-Bilder zu verwenden, werden die Bilder ebenfalls als `DataPart` hinzug
    ->addPart(new DataPart(file_get_contents('/path/to/your/image.png'), 'image/png', 'inline-image'));
 ```
 In diesem Beispiel wird der Inhalt der Bilddatei `/path/to/your/image.png` als Inline-Bild an die E-Mail angehängt.
-
-Absolut! Hier ist eine Unterrubrik für die Readme, die die Verwendung der `custom_config.yml` Datei erklärt:
 
 ## 2. Konfiguration über `custom_config.yml` z.B. für eine lokale Entwicklungsumgebung
 
@@ -462,6 +461,51 @@ $smtpSettings = [
 $success = $mailer->send($email, $smtpSettings);
 ```
 
+## Detour-Modus
+
+Der Detour-Modus ist ein spezieller Modus, der in erster Linie für Test- und Entwicklungsumgebungen gedacht ist. Wenn dieser Modus aktiviert ist, werden alle ausgehenden E-Mails nicht an die eigentlichen Empfänger gesendet, sondern stattdessen an eine definierte Testadresse umgeleitet. Dies ist nützlich, um sicherzustellen, dass während der Entwicklung oder im Test keine E-Mails versehentlich an echte Benutzer gesendet werden.
+
+### Aktivierung des Detour-Modus
+
+Der Detour-Modus kann auf folgende Weisen aktiviert werden:
+
+1.  **Backend-Konfiguration:**
+    *   Im Konfigurationsbereich des AddOns gibt es ein Checkbox-Feld mit dem Namen "Detour-Modus".
+    *   Wenn diese Checkbox aktiviert ist, wird der Detour-Modus eingeschaltet.
+
+2.  **`custom_config.yml`**:
+    *   Du kannst den Detour-Modus auch über die `custom_config.yml` aktivieren.
+    *   Füge die Zeile `detour_mode: true` in deine `custom_config.yml`-Datei ein.
+    *   Wenn die `custom_config.yml` Datei existiert, wird die Option im Backend nicht mehr editierbar sein.
+3.  **Programmgesteuert**:
+     * Du kannst die Einstellung programmgesteuert über  `rex_config::set('symfony_mailer', 'detour_mode', true);` setzen.
+
+### Festlegen der Detour-Adresse
+
+Die E-Mail-Adresse, an die E-Mails im Detour-Modus umgeleitet werden, kann auf folgende Weise festgelegt werden:
+
+1.  **`custom_config.yml`**:
+    *   Füge die Zeile `detour_address: "deine_testadresse@example.com"` in deine `custom_config.yml`-Datei ein.
+    *   Ersetze `"deine_testadresse@example.com"` durch die gewünschte Testadresse.
+2.  **Programmgesteuert**:
+    * Du kannst die Adresse programmgesteuert über `rex_config::set('symfony_mailer', 'detour_address', "deine_testadresse@example.com");` setzen.
+3.  **Standardadresse:**
+    *   Wenn keine Detour-Adresse in der `custom_config.yml` Datei konfiguriert ist oder über `setConfig()` gesetzt wurde, wird die Standardadresse `test@example.com` verwendet.
+
+### Funktion des Detour-Modus
+
+*   Wenn der Detour-Modus aktiviert ist, werden alle E-Mails an die konfigurierte Detour-Adresse gesendet, unabhängig davon, welche E-Mail-Adressen als Empfänger in der E-Mail festgelegt wurden.
+*   Die ursprünglichen Empfänger werden im Header der E-Mail unter `X-Original-To` gespeichert, so dass sie in der empfangenen E-Mail eingesehen werden können.
+*   Der Detour-Modus ist nur für den E-Mail-Versand relevant. Alle anderen Funktionen wie E-Mail-Archivierung und Logging funktionieren weiterhin wie gewohnt.
+
+**Beispiel:**
+
+Nehmen wir an, du hast den Detour-Modus aktiviert und die Detour-Adresse auf `test@example.com` gesetzt. Wenn du eine E-Mail an `user1@example.com` und `user2@example.com` sendest, wird die E-Mail trotzdem nur an `test@example.com` gesendet. Die Information das die Mail eigentlich an `user1@example.com` und `user2@example.com` gehen sollte, ist im Header unter `X-Original-To` zu finden.
+
+**Wichtig:**
+
+*   Vergiss nicht, den Detour-Modus zu deaktivieren, wenn du E-Mails an echte Benutzer senden möchtest.
+*   Die Detour-Adresse sollte immer eine gültige E-Mail-Adresse sein.
 
 ## Fehlerbehebung
 
@@ -477,7 +521,6 @@ $success = $mailer->send($email, $smtpSettings);
 
 * http://www.redaxo.org
 * https://github.com/FriendsOfREDAXO
-
 
 ## Credits
 
