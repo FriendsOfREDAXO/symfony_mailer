@@ -110,11 +110,12 @@ if (rex_post('test_mail', 'boolean')) {
             
             $email->text($body);
             
-            if ($mailer->send($email)) {
-                outputTestResult($addon->i18n('test_mail_sent', rex_escape($addon->getConfig('test_address'))), true);
-            } else {
-                outputTestResult($addon->i18n('test_mail_error'), false, $mailer->getDebugInfo());
-            }
+           if ($mailer->send($email)) {
+    outputTestResult($addon->i18n('test_mail_sent', rex_escape($addon->getConfig('test_address'))), true);
+} else {
+    $errorInfo = $mailer->getErrorInfo();
+    outputTestResult($addon->i18n('test_mail_error'), false, $errorInfo);
+}
             
         } catch (\Exception $e) {
             outputTestResult($addon->i18n('test_mail_error') . '<br>' . $e->getMessage(), false);
