@@ -389,7 +389,7 @@ Das AddOn bietet die Möglichkeit, die SMTP- und IMAP-Einstellungen über eine e
 Hier ist ein Beispiel für die Struktur der `custom_config.yml` Datei:
 
 ```yaml
-from: "your-custom-from@example.com"
+from: "your-custom-from@example.tld"
 name: "Your Custom Name"
 charset: "utf-8"
 archive: true
@@ -406,6 +406,9 @@ imap_port: 993
 imap_username: "your.custom.imap.username"
 imap_password: "your.custom.imap.password"
 imap_folder: "INBOX.Sent"
+detour_mode: false
+detrour_adresse: 'some_adress@example.tld'
+
 ```
 
 **Erläuterung der Parameter:**
