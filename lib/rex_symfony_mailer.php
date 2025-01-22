@@ -27,6 +27,8 @@ class RexSymfonyMailer
     private bool $imapArchive;
     private array $errorInfo = [];
     private bool $debug;
+    private bool $detourMode;
+    private string $detourAddress;
 
     /**
      * @var array<string, mixed>
@@ -59,7 +61,8 @@ class RexSymfonyMailer
         $this->archive = (bool)($customConfig['archive'] ?? $addon->getConfig('archive', false));
         $this->imapArchive = (bool)($customConfig['imap_archive'] ?? $addon->getConfig('imap_archive', false));
         $this->debug = (bool)($customConfig['debug'] ?? $addon->getConfig('debug', false));
-
+        $this->detourMode = (bool)($customConfig['detour_mode'] ?? $addon->getConfig('detour_mode', false));
+        $this->detourAddress = $customConfig['detour_address'] ?? $addon->getConfig('detour_address', $addon->getConfig('test_address'));
 
         $this->smtpSettings = [
             'host' => $customConfig['host'] ?? $addon->getConfig('host'),
@@ -184,7 +187,7 @@ class RexSymfonyMailer
         return $email;
     }
 
-    public function send(Email $email, array $smtpSettings = [], string $imapFolder = ''): bool
+      public function send(Email $email, array $smtpSettings = [], string $imapFolder = ''): bool
     {
         $mailer = $this->mailer;
         if (!empty($smtpSettings)) {
@@ -196,6 +199,11 @@ class RexSymfonyMailer
                 $this->logError('Failed to create custom mailer', $e);
                 return false;
             }
+        }
+
+        // Detour-Modus aktiv?
+        if ($this->detourMode) {
+            $this->applyDetour($email);
         }
 
         try {
@@ -212,9 +220,23 @@ class RexSymfonyMailer
             $this->log('OK', $email);
             return true;
         } catch (TransportExceptionInterface $e) {
-            $this->logError('Failed to send email', $e);
+             $this->logError('Failed to send email', $e);
             return false;
         }
+    }
+
+
+    private function applyDetour(Email $email): void
+    {
+        $originalTo = $email->getTo();
+        $email->to(new Address($this->detourAddress, 'Detour'));
+        
+        // Setze die ursprünglichen Empfänger in den Header, um sie im E-Mail-Client einsehen zu können.
+        $originalTos = [];
+        foreach ($originalTo as $address) {
+            $originalTos[] = $address->toString();
+        }
+          $email->getHeaders()->addTextHeader('X-Original-To', implode(', ', $originalTos));
     }
 
     private function archiveEmail(Email $email): void
@@ -254,7 +276,7 @@ class RexSymfonyMailer
         }
     }
 
-    private function logError(string $context, \Exception $e): void
+   private function logError(string $context, \Exception $e): void
     {
         $this->errorInfo = $this->getErrorDetails($e);
 
