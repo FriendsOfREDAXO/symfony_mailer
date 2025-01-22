@@ -80,9 +80,6 @@ class RexSymfonyMailer
         }
     }
 
-    /**
-     * @param array<string, mixed> $smtpSettings
-     */
     private function buildDsn(array $smtpSettings = []): string
     {
         $settings = empty($smtpSettings) ? $this->smtpSettings : $smtpSettings;
@@ -115,9 +112,35 @@ class RexSymfonyMailer
         return $dsn;
     }
 
-    /**
-     * @return array<string,mixed>
-     */
+    private function getErrorHint(string $error): ?string
+    {
+        if (str_contains($error, 'authentication failed') || str_contains($error, 'Expected response code "235"')) {
+            return rex_i18n::msg('symfony_mailer_error_auth');
+        }
+        
+        if (str_contains($error, 'Connection could not be established')) {
+            return rex_i18n::msg('symfony_mailer_error_connection');
+        }
+
+        if (str_contains($error, 'SSL')) {
+            return rex_i18n::msg('symfony_mailer_error_ssl');
+        }
+
+        if (str_contains($error, 'relay access denied') || str_contains($error, 'relay not permitted')) {
+            return rex_i18n::msg('symfony_mailer_error_relay');
+        }
+
+        if (str_contains($error, 'sender address rejected')) {
+            return rex_i18n::msg('symfony_mailer_error_sender');
+        }
+
+        if (str_contains($error, 'STARTTLS')) {
+            return rex_i18n::msg('symfony_mailer_error_starttls');
+        }
+
+        return null;
+    }
+
     public function testConnection(array $smtpSettings = []): array
     {
         try {
@@ -135,7 +158,7 @@ class RexSymfonyMailer
             return [
                 'success' => false,
                 'message' => $e->getMessage(),
-                'error_details' => $this->debug ? $this->getErrorDetails($e) : null
+                'error_details' => $this->getErrorDetails($e)
             ];
         }
     }
@@ -149,9 +172,6 @@ class RexSymfonyMailer
         return $email;
     }
 
-    /**
-     * @param array<string, mixed> $smtpSettings
-     */
     public function send(Email $email, array $smtpSettings = [], string $imapFolder = ''): bool
     {
         $mailer = $this->mailer;
@@ -225,25 +245,29 @@ class RexSymfonyMailer
 
     private function logError(string $context, \Exception $e): void
     {
-    $this->errorInfo = $this->getErrorDetails($e);
-    
-    if ($this->debug) {
-        rex_logger::logError(
-            E_WARNING,                                              // Fehler-Level als int
-            $context . ': ' . $e->getMessage(),                     // Fehlermeldung
-            $e->getFile(),                                         // Datei
-            $e->getLine(),                                         // Zeile
-            isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null  // URL optional
-        );
-    }
+        $this->errorInfo = $this->getErrorDetails($e);
+        
+        if ($this->debug) {
+            rex_logger::logError(
+                E_WARNING,
+                $context . ': ' . $e->getMessage(),
+                $e->getFile(),
+                $e->getLine(),
+                isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null
+            );
+        }
     }
 
     private function getErrorDetails(\Exception $e): array
     {
         $details = [
             'message' => $e->getMessage(),
-            'dsn' => $this->buildDsn()  // Aktueller DSN String für bessere Fehleranalyse
+            'dsn' => $this->buildDsn()
         ];
+
+        if ($hint = $this->getErrorHint($e->getMessage())) {
+            $details['hint'] = $hint;
+        }
 
         if ($this->debug) {
             $details['file'] = $e->getFile();
@@ -282,9 +306,6 @@ class RexSymfonyMailer
         $log->add($data);
     }
 
-    /**
-     * @return array<string,mixed>
-     */
     public function getErrorInfo(): array
     {
         return $this->errorInfo;
