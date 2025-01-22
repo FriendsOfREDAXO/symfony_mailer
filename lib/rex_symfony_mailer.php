@@ -14,6 +14,7 @@ use rex_i18n;
 use rex_log_file;
 use rex_file;
 use rex_dir;
+use rex_logger;
 
 class RexSymfonyMailer
 {
@@ -23,19 +24,18 @@ class RexSymfonyMailer
     private string $fromName;
     private bool $archive;
     private bool $imapArchive;
-    private array $debugInfo = [];
+    private array $errorInfo = [];
     private bool $debug;
     
     /**
      * @var array<string, mixed>
      */
-     private array $smtpSettings = [];
+    private array $smtpSettings = [];
 
     /**
      * @var array<string, mixed>
      */
     private array $imapSettings = [];
-
 
     public function __construct()
     {
@@ -73,16 +73,9 @@ class RexSymfonyMailer
         $dsn = $this->buildDsn();
         try {
             $transport = Transport::fromDsn($dsn);
-            
-            if ($this->debug && $transport instanceof \Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport) {
-                $transport->setStream(new \Symfony\Component\Mailer\Transport\Smtp\Stream\SocketStream());
-                $transport->getStream()->setDebug(true);
-            }
-            
             $this->mailer = new Mailer($transport);
         } catch (\Exception $e) {
-            $this->debugInfo['error'] = $e->getMessage();
-            $this->debugInfo['trace'] = $e->getTraceAsString();
+            $this->logError('Mailer initialization failed', $e);
             throw new \RuntimeException('Failed to initialize mailer: ' . $e->getMessage());
         }
     }
@@ -123,44 +116,29 @@ class RexSymfonyMailer
     }
 
     /**
- * @return array<string,mixed>
- */
-public function testConnection(array $smtpSettings = []): array
-{
-    try {
-        $dsn = $this->buildDsn($smtpSettings);
-        
-        // Capture debug output if enabled
-        if ($this->debug) {
-            $logger = new \Symfony\Component\Mailer\Transport\Smtp\Stream\AbstractStream();
-            $logger->setDebug(true);
-            ob_start();
-        }
-        
-        $transport = Transport::fromDsn($dsn);
-        $transport->start();
-        
-        if ($this->debug) {
-            $this->debugInfo['smtp_debug'] = ob_get_clean();
-        }
+     * @return array<string,mixed>
+     */
+    public function testConnection(array $smtpSettings = []): array
+    {
+        try {
+            $transport = Transport::fromDsn($this->buildDsn($smtpSettings));
+            $transport->start();
 
-        return [
-            'success' => true,
-            'message' => rex_i18n::msg('symfony_mailer_test_connection_success'),
-            'debug' => $this->debug ? $this->debugInfo : null
-        ];
+            return [
+                'success' => true,
+                'message' => rex_i18n::msg('symfony_mailer_test_connection_success')
+            ];
 
-    } catch (\Exception $e) {
-        $this->debugInfo['error'] = $e->getMessage();
-        $this->debugInfo['trace'] = $e->getTraceAsString();
-        
-        return [
-            'success' => false,
-            'message' => rex_i18n::msg('symfony_mailer_test_connection_error', $e->getMessage()),
-            'debug' => $this->debugInfo
-        ];
+        } catch (\Exception $e) {
+            $this->logError('SMTP connection test failed', $e);
+            
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error_details' => $this->debug ? $this->getErrorDetails($e) : null
+            ];
+        }
     }
-}
 
     public function createEmail(): Email
     {
@@ -181,26 +159,15 @@ public function testConnection(array $smtpSettings = []): array
             $dsn = $this->buildDsn($smtpSettings);
             try {
                 $transport = Transport::fromDsn($dsn);
-                if ($this->debug && $transport instanceof \Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport) {
-                    $transport->setStream(new \Symfony\Component\Mailer\Transport\Smtp\Stream\SocketStream());
-                    $transport->getStream()->setDebug(true);
-                }
                 $mailer = new Mailer($transport);
             } catch (\Exception $e) {
-                $this->debugInfo['error'] = $e->getMessage();
-                $this->log('ERROR', $email, $e->getMessage());
+                $this->logError('Failed to create custom mailer', $e);
                 return false;
             }
         }
        
         try {
-            if ($this->debug) {
-                ob_start();
-                $mailer->send($email);
-                $this->debugInfo['smtp_debug'] = ob_get_clean();
-            } else {
-                $mailer->send($email);
-            }
+            $mailer->send($email);
 
             if ($this->archive) {
                 $this->archiveEmail($email);
@@ -214,15 +181,11 @@ public function testConnection(array $smtpSettings = []): array
             return true;
 
         } catch (TransportExceptionInterface $e) {
-            $this->debugInfo['error'] = $e->getMessage();
-            if ($this->debug) {
-                $this->debugInfo['trace'] = $e->getTraceAsString();
-            }
-            $this->log('ERROR', $email, $e->getMessage());
+            $this->logError('Failed to send email', $e);
             return false;
         }
     }
-    
+
     private function archiveEmail(Email $email): void
     {
         $dir = self::getArchiveFolder() . '/' . date('Y') . '/' . date('m');
@@ -260,6 +223,35 @@ public function testConnection(array $smtpSettings = []): array
         }
     }
 
+    private function logError(string $context, \Exception $e): void
+    {
+        $this->errorInfo = $this->getErrorDetails($e);
+        
+        if ($this->debug) {
+            rex_logger::logError(
+                1,
+                $context . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString(),
+                'Symfony Mailer'
+            );
+        }
+    }
+
+    private function getErrorDetails(\Exception $e): array
+    {
+        $details = [
+            'message' => $e->getMessage(),
+            'dsn' => $this->buildDsn()  // Aktueller DSN String für bessere Fehleranalyse
+        ];
+
+        if ($this->debug) {
+            $details['file'] = $e->getFile();
+            $details['line'] = $e->getLine();
+            $details['trace'] = $e->getTraceAsString();
+        }
+
+        return $details;
+    }
+
     private function log(string $status, Email $email, string $error = ''): void
     {
         $addon = rex_addon::get('symfony_mailer');
@@ -291,9 +283,9 @@ public function testConnection(array $smtpSettings = []): array
     /**
      * @return array<string,mixed>
      */
-    public function getDebugInfo(): array
+    public function getErrorInfo(): array
     {
-        return $this->debugInfo;
+        return $this->errorInfo;
     }
 
     public static function getArchiveFolder(): string
