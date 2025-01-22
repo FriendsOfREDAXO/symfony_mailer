@@ -5,6 +5,10 @@ use Symfony\Component\Mime\Email;
 
 $addon = rex_addon::get('symfony_mailer');
 
+$customConfigPath = rex_path::addonData('symfony_mailer', 'custom_config.yml');
+$externalConfig = file_exists($customConfigPath);
+
+
 // --- Funktionen für Testausgaben ---
 function outputTestResult($message, $success = true, $error = null)
 {
@@ -138,26 +142,49 @@ if (rex_post('test_mail', 'boolean')) {
 // Setup config form
 $form = rex_config_form::factory('symfony_mailer');
 
+// --- Config Seite Meldung wenn custom_config.yml vorhanden ist ---
+if ($externalConfig) {
+    echo rex_view::warning($addon->i18n('config_external'));
+}
 // SMTP Settings Fieldset
 $form->addFieldset('SMTP Settings');
+
 
 $field = $form->addTextField('from');
 $field->setLabel($addon->i18n('sender_email'));
 $field->setNotice($addon->i18n('sender_email_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 
 $field = $form->addTextField('test_address');
 $field->setLabel($addon->i18n('test_address'));
 $field->setNotice($addon->i18n('test_address_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
 
 $field = $form->addTextField('name');
 $field->setLabel($addon->i18n('sender_name'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
 
 $field = $form->addTextField('host');
 $field->setLabel($addon->i18n('smtp_host'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 
 $field = $form->addTextField('port');
 $field->setLabel($addon->i18n('smtp_port'));
 $field->setNotice($addon->i18n('smtp_port_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 
 $field = $form->addSelectField('security');
 $field->setLabel($addon->i18n('smtp_security'));
@@ -165,18 +192,30 @@ $select = $field->getSelect();
 $select->addOption($addon->i18n('smtp_security_none'), '');
 $select->addOption('TLS', 'tls');
 $select->addOption('SSL', 'ssl');
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
 
 $field = $form->addCheckboxField('auth');
 $field->setLabel($addon->i18n('smtp_auth'));
 $field->addOption($addon->i18n('smtp_auth_enabled'), 1);
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
 
 $field = $form->addTextField('username');
 $field->setLabel($addon->i18n('smtp_username'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
 
 // Korrekte Verwendung von setAttribute() für das SMTP Passwort
 $field = $form->addTextField('password');
 $field->setLabel($addon->i18n('smtp_password'));
 $field->setAttribute('type', 'password');
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
 
 $field = $form->addCheckboxField('debug');
 $field->setLabel($addon->i18n('smtp_debug'));
@@ -196,6 +235,10 @@ $select->addOption($addon->i18n('log_all'), 2);
 $field = $form->addCheckboxField('archive');
 $field->setLabel($addon->i18n('archive_emails'));
 $field->addOption($addon->i18n('archive_enabled'), 1);
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 
 // IMAP Archive Settings Fieldset
 $form->addFieldset('IMAP Archive');
@@ -203,25 +246,49 @@ $form->addFieldset('IMAP Archive');
 $field = $form->addCheckboxField('imap_archive');
 $field->setLabel($addon->i18n('imap_archive'));
 $field->addOption($addon->i18n('imap_archive_enabled'), 1);
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 
 $field = $form->addTextField('imap_host');
 $field->setLabel($addon->i18n('imap_host'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 
 $field = $form->addTextField('imap_port');
 $field->setLabel($addon->i18n('imap_port'));
 $field->setNotice($addon->i18n('imap_port_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 
 $field = $form->addTextField('imap_username');
 $field->setLabel($addon->i18n('imap_username'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 
 // Korrekte Verwendung von setAttribute() für das IMAP Passwort
 $field = $form->addTextField('imap_password');
 $field->setLabel($addon->i18n('imap_password'));
 $field->setAttribute('type', 'password');
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 
 $field = $form->addTextField('imap_folder');
 $field->setLabel($addon->i18n('imap_folder'));
 $field->setNotice($addon->i18n('imap_folder_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 
 // Output form
 echo '<section class="rex-page-section">
