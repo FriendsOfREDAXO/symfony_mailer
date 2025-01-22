@@ -225,15 +225,17 @@ class RexSymfonyMailer
 
     private function logError(string $context, \Exception $e): void
     {
-        $this->errorInfo = $this->getErrorDetails($e);
-        
-        if ($this->debug) {
-            rex_logger::logError(
-                1,
-                $context . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString(),
-                'Symfony Mailer'
-            );
-        }
+    $this->errorInfo = $this->getErrorDetails($e);
+    
+    if ($this->debug) {
+        rex_logger::logError(
+            E_WARNING,                                              // Fehler-Level als int
+            $context . ': ' . $e->getMessage(),                     // Fehlermeldung
+            $e->getFile(),                                         // Datei
+            $e->getLine(),                                         // Zeile
+            isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null  // URL optional
+        );
+    }
     }
 
     private function getErrorDetails(\Exception $e): array
