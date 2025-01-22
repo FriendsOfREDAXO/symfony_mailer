@@ -113,6 +113,37 @@ class RexSymfonyMailer
         if($this->devMode && empty($settings)){
               return 'null://';
         }
+         
+        // Wenn der DEV-Mode aktiv ist und $settings nicht leer ist, werden die settings genutzt
+         if ($this->devMode && !empty($settings)) {
+           $host = $settings['host'];
+           $port = $settings['port'];
+           $security = $settings['security'];
+           $auth = $settings['auth'];
+           $username = $settings['username'];
+           $password = $settings['password'];
+     
+           $dsn = 'smtp://';
+     
+           if ($auth && $username && $password) {
+             $dsn .= urlencode($username) . ':' . urlencode($password) . '@';
+           }
+     
+           $dsn .= $host . ':' . $port;
+     
+           $options = [];
+           if ($security) {
+             $options['transport'] = 'smtp';
+             $options['encryption'] = $security;
+           }
+     
+           if (!empty($options)) {
+             $dsn .= '?' . http_build_query($options);
+           }
+     
+           return $dsn;
+         }
+        
 
         $host = $settings['host'];
         $port = $settings['port'];
