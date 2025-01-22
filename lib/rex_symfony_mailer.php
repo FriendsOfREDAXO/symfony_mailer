@@ -1,5 +1,4 @@
 <?php
-
 namespace FriendsOfRedaxo\SymfonyMailer;
 
 use Symfony\Component\Mailer\Transport;
@@ -68,7 +67,8 @@ class RexSymfonyMailer
         $this->imapArchive = (bool)($customConfig['imap_archive'] ?? $addon->getConfig('imap_archive', false));
         $this->debug = (bool)($customConfig['debug'] ?? $addon->getConfig('debug', false));
         $this->detourMode = (bool)($customConfig['detour_mode'] ?? $addon->getConfig('detour_mode', false));
-        $this->detourAddress = $customConfig['detour_address'] ?? $addon->getConfig('detour_address', $addon->getConfig('test_address'));
+        // Modified line: added default empty string if all options fail
+        $this->detourAddress = $customConfig['detour_address'] ?? $addon->getConfig('detour_address', $addon->getConfig('test_address') ?? '');
 
         $this->smtpSettings = [
             'host' => $customConfig['host'] ?? $addon->getConfig('host'),
