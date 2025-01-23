@@ -114,15 +114,15 @@ if (rex_post('test_mail', 'boolean')) {
             $email->subject($addon->i18n('test_mail_default_subject'));
             
             // Build test mail body with debug info
-            $body = $addon->i18n('test_mail_greeting') . "\n\n";
-            $body .= $addon->i18n('test_mail_body', rex::getServerName()) . "\n\n";
-            $body .= str_repeat('-', 50) . "\n\n";
+            $body = $addon->i18n('test_mail_greeting') . "\r\n";
+            $body .= $addon->i18n('test_mail_body', rex::getServerName()) . "\r\n";
+            $body .= str_repeat('-', 50) . "\r\n";
             $body .= 'Server: ' . rex::getServerName() . "\n";
-            $body .= 'Domain: ' . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-') . "\n";
-            $body .= 'Mailer: Symfony Mailer' . "\n";
-            $body .= 'Host: ' . $addon->getConfig('host') . "\n";
-            $body .= 'Port: ' . $addon->getConfig('port') . "\n";
-            $body .= 'Security: ' . ($addon->getConfig('security') ?: 'none') . "\n";
+            $body .= 'Domain: ' . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-') . "\r\n";
+            $body .= 'Mailer: Symfony Mailer' . "\r\n";
+            $body .= 'Host: ' . $addon->getConfig('host') . "\r\n";
+            $body .= 'Port: ' . $addon->getConfig('port') . "\r\n";
+            $body .= 'Security: ' . ($addon->getConfig('security') ?: 'none') . "\r\n";
             
             $email->text($body);
             
