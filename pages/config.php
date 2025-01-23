@@ -4,10 +4,8 @@ use FriendsOfRedaxo\SymfonyMailer\RexSymfonyMailer;
 use Symfony\Component\Mime\Email;
 
 $addon = rex_addon::get('symfony_mailer');
-
 $customConfigPath = rex_path::addonData('symfony_mailer', 'custom_config.yml');
 $externalConfig = file_exists($customConfigPath);
-
 
 // --- Funktionen für Testausgaben ---
 function outputTestResult($message, $success = true, $error = null)
@@ -50,7 +48,9 @@ if (rex_post('test_connection', 'boolean')) {
 
 // Test IMAP connection
 if (rex_post('test_imap', 'boolean')) {
-    if (!$addon->getConfig('imap_archive')) {
+   if (!extension_loaded('imap')) {
+       outputTestResult($addon->i18n('imap_extension_missing'), false);
+    } elseif (!$addon->getConfig('imap_archive')) {
         outputTestResult($addon->i18n('imap_not_enabled'), false);
     } else {
         try {
@@ -59,47 +59,79 @@ if (rex_post('test_imap', 'boolean')) {
             $username = $addon->getConfig('imap_username');
             $password = $addon->getConfig('imap_password');
             $folder = $addon->getConfig('imap_folder', 'Sent');
-            
-            $mailbox = sprintf('{%s:%d/imap/ssl}%s', $host, $port, $folder);
+
+            $mailbox = sprintf('{%s:%d/imap/ssl}', $host, $port); // Verbindung ohne Ordner
             
             // Set timeout for the connection attempt
             imap_timeout(IMAP_OPENTIMEOUT, 10);
-            
-            // Try to connect
+
+            // Try to connect without specific folder first
             if ($connection = @imap_open($mailbox, $username, $password)) {
-                // Get mailbox info for additional debug data
-                $check = imap_check($connection);
-                $folders = imap_list($connection, sprintf('{%s:%d}', $host, $port), '*');
-                $status = imap_status($connection, $mailbox, SA_ALL);
                 
-                $debug = [
-                    'Connection' => 'Success',
-                    'Mailbox' => $mailbox,
-                    'Available folders' => $folders,
-                    'Messages in folder' => $check->Nmsgs,
-                    'Folder status' => [
-                        'messages' => $status->messages,
-                        'recent' => $status->recent,
-                        'unseen' => $status->unseen
-                    ]
-                ];
-                
-                imap_close($connection);
-                
-                outputTestResult(
-                    $addon->i18n('imap_connection_success'),
-                    true,
-                    $debug
-                );
-            } else {
+                $folders = imap_list($connection, $mailbox, '*');
+                $folderExists = false;
+                foreach ($folders as $f) {
+                    $folder = str_replace($mailbox, '', $f);
+                    if (ltrim($folder, '/') ==  $addon->getConfig('imap_folder', 'Sent')) {
+                        $folderExists = true;
+                        break;
+                    }
+                }
+
+               if (!$folderExists) {
+                    imap_close($connection);
+                    outputTestResult(
+                        $addon->i18n('imap_folder_not_exist') . ' "' . $addon->getConfig('imap_folder', 'Sent'). '"',
+                        false
+                    );
+                    return;
+               }
+
+                // If Folder exist then use the folder to try open it
+                $mailbox .=  $addon->getConfig('imap_folder', 'Sent');
+               if ($connection = @imap_open($mailbox, $username, $password)) {
+                    // Get mailbox info for additional debug data
+                    $check = imap_check($connection);
+                    $status = imap_status($connection, $mailbox, SA_ALL);
+
+                    $debug = [
+                        'Connection' => 'Success',
+                        'Mailbox' => $mailbox,
+                        'Available folders' => $folders,
+                        'Messages in folder' => $check->Nmsgs,
+                        'Folder status' => [
+                            'messages' => $status->messages,
+                            'recent' => $status->recent,
+                            'unseen' => $status->unseen
+                        ]
+                    ];
+
+                    imap_close($connection);
+
+                    outputTestResult(
+                        $addon->i18n('imap_connection_success'),
+                        true,
+                        $debug
+                    );
+                 }
+                else {
+                    $error = $addon->i18n('imap_connection_error') . '<br>' . imap_last_error();
+                    imap_close($connection);
+                    outputTestResult($error, false);
+                }
+           
+            }
+            else {
                 $error = $addon->i18n('imap_connection_error') . '<br>' . imap_last_error();
                 outputTestResult($error, false);
             }
+
         } catch (\Exception $e) {
             outputTestResult($addon->i18n('imap_connection_error') . '<br>' . $e->getMessage(), false);
         }
     }
 }
+
 
 // Handle test mail
 if (rex_post('test_mail', 'boolean')) {
@@ -138,6 +170,7 @@ if (rex_post('test_mail', 'boolean')) {
         }
     }
 }
+
 
 // Setup config form
 $form = rex_config_form::factory('symfony_mailer');
@@ -236,46 +269,49 @@ if ($externalConfig) {
 
 
 // IMAP Archive Settings Fieldset
-$form->addFieldset('IMAP Archive');
+$imap_available = extension_loaded('imap');
+if ($imap_available) {
+    $form->addFieldset('IMAP Archive');
 
-$field = $form->addCheckboxField('imap_archive');
-$field->setLabel($addon->i18n('imap_archive'));
-$field->addOption($addon->i18n('imap_archive_enabled'), 1);
-if ($externalConfig) {
-    $field->setAttribute('disabled', 'disabled');
-}
+    $field = $form->addCheckboxField('imap_archive');
+    $field->setLabel($addon->i18n('imap_archive'));
+    $field->addOption($addon->i18n('imap_archive_enabled'), 1);
+    if ($externalConfig) {
+        $field->setAttribute('disabled', 'disabled');
+    }
 
-$field = $form->addTextField('imap_host');
-$field->setLabel($addon->i18n('imap_host'));
-if ($externalConfig) {
-    $field->setAttribute('disabled', 'disabled');
-}
+    $field = $form->addTextField('imap_host');
+    $field->setLabel($addon->i18n('imap_host'));
+    if ($externalConfig) {
+        $field->setAttribute('disabled', 'disabled');
+    }
 
-$field = $form->addTextField('imap_port');
-$field->setLabel($addon->i18n('imap_port'));
-$field->setNotice($addon->i18n('imap_port_notice'));
-if ($externalConfig) {
-    $field->setAttribute('disabled', 'disabled');
-}
+    $field = $form->addTextField('imap_port');
+    $field->setLabel($addon->i18n('imap_port'));
+    $field->setNotice($addon->i18n('imap_port_notice'));
+    if ($externalConfig) {
+        $field->setAttribute('disabled', 'disabled');
+    }
 
-$field = $form->addTextField('imap_username');
-$field->setLabel($addon->i18n('imap_username'));
-if ($externalConfig) {
-    $field->setAttribute('disabled', 'disabled');
-}
+    $field = $form->addTextField('imap_username');
+    $field->setLabel($addon->i18n('imap_username'));
+    if ($externalConfig) {
+        $field->setAttribute('disabled', 'disabled');
+    }
 
-$field = $form->addTextField('imap_password');
-$field->setLabel($addon->i18n('imap_password'));
-$field->setAttribute('type', 'password');
-if ($externalConfig) {
-    $field->setAttribute('disabled', 'disabled');
-}
+    $field = $form->addTextField('imap_password');
+    $field->setLabel($addon->i18n('imap_password'));
+    $field->setAttribute('type', 'password');
+    if ($externalConfig) {
+        $field->setAttribute('disabled', 'disabled');
+    }
 
-$field = $form->addTextField('imap_folder');
-$field->setLabel($addon->i18n('imap_folder'));
-$field->setNotice($addon->i18n('imap_folder_notice'));
-if ($externalConfig) {
-    $field->setAttribute('disabled', 'disabled');
+    $field = $form->addTextField('imap_folder');
+    $field->setLabel($addon->i18n('imap_folder'));
+    $field->setNotice($addon->i18n('imap_folder_notice'));
+    if ($externalConfig) {
+        $field->setAttribute('disabled', 'disabled');
+    }
 }
 
 // Detour Mode Settings Fieldset
@@ -315,14 +351,20 @@ echo '</div>
                                     <div class="form-group">
                                         <button type="submit" name="test_mail" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_mail_send') . '</button>
                                     </div>
-                                </fieldset>
+                                </fieldset>';
 
-                                <fieldset>
-                                    <legend>' . $addon->i18n('imap_test') . '</legend>
-                                    <div class="form-group">
-                                        <button type="submit" name="test_imap" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_imap_connection') . '</button>
-                                    </div>
-                                </fieldset>
+if ($imap_available) {
+    echo '<fieldset>
+        <legend>' . $addon->i18n('imap_test') . '</legend>
+        <div class="form-group">
+            <button type="submit" name="test_imap" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_imap_connection') . '</button>
+        </div>
+    </fieldset>';
+} else {
+      echo '<div class="alert alert-warning">' . $addon->i18n('imap_extension_missing_notice', '<a href="https://www.php.net/manual/en/imap.installation.php" target="_blank">PHP IMAP</a>') . '</div>';
+}
+
+echo '         
                             </div>
                         </div>
                     </form>
