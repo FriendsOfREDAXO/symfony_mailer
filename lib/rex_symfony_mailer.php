@@ -79,7 +79,7 @@ class RexSymfonyMailer
         ];
 
         $this->imapSettings = [
-             'host' => $customConfig['imap_host'] ?? $addon->getConfig('imap_host'),
+            'host' => $customConfig['imap_host'] ?? $addon->getConfig('imap_host'),
             'port' => $customConfig['imap_port'] ?? $addon->getConfig('imap_port', 993),
             'username' => $customConfig['imap_username'] ?? $addon->getConfig('imap_username'),
             'password' => $customConfig['imap_password'] ?? $addon->getConfig('imap_password'),
@@ -214,12 +214,10 @@ class RexSymfonyMailer
      *
      * @return Email The new Email instance.
      */
-     public function createEmail(): Email
+    public function createEmail(): Email
     {
         $email = new Email();
         $email->from(new Address($this->fromAddress, $this->fromName));
-        $email->getHeaders()->addTextHeader('Content-type', 'text/html; charset='.$this->charset);
-
         return $email;
     }
 
@@ -251,6 +249,12 @@ class RexSymfonyMailer
             $this->applyDetour($email);
         }
 
+          // Zeilenumbrüche für Text E-Mails konvertieren (nur wenn Text-Body gesetzt wurde)
+         if ($email->getTextBody()) {
+            $email->text(str_replace("\n", "\r\n", $email->getTextBody()));
+         }
+
+
         try {
             $mailer->send($email);
 
@@ -262,7 +266,13 @@ class RexSymfonyMailer
                 $this->archiveToImap($email, $imapFolder);
             }
 
-            $this->log('OK', $email);
+            // Log Body (gekürzt)
+           $body = $email->getTextBody() ?: $email->getHtmlBody();
+            if (strlen($body) > 200) {
+                $body = substr($body, 0, 200) . '... (gekürzt)';
+            }
+            $this->log('OK', $email, '', $body);
+
             return true;
         } catch (TransportExceptionInterface $e) {
              $this->logError('Failed to send email', $e);
@@ -391,8 +401,9 @@ class RexSymfonyMailer
      * @param string $status The status of the email (OK or ERROR).
      * @param Email $email The email that was sent.
      * @param string $error The error message (if any).
+     * @param string $body The body of the email
      */
-    private function log(string $status, Email $email, string $error = ''): void
+    private function log(string $status, Email $email, string $error = '', string $body = ''): void
     {
         $addon = rex_addon::get('symfony_mailer');
         $logging = (int)$addon->getConfig('logging');
@@ -423,7 +434,8 @@ class RexSymfonyMailer
             implode(', ', $fromAddresses),
             implode(', ', $toAddresses),
             $email->getSubject(),
-            $error
+            $error,
+            $body
         ];
         $log->add($data);
     }
