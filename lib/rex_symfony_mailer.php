@@ -232,6 +232,14 @@ class RexSymfonyMailer
      */
       public function send(Email $email, array $smtpSettings = [], string $imapFolder = ''): bool
     {
+         // Pre-Send Extension Point
+        $result = rex_extension::registerPoint(new rex_extension_point('SYMFONY_MAILER_PRE_SEND', $email));
+         if ($result === false) {
+           $message = is_string($result) ? $result : 'Email sending aborted by extension';
+           $this->errorInfo = ['message' => $message];
+          $this->log('ERROR', $email, $message);
+          return false;
+       }
         $mailer = $this->mailer;
         if (!empty($smtpSettings)) {
             $dsn = $this->buildDsn($smtpSettings);
