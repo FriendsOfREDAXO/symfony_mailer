@@ -57,6 +57,9 @@ symfony_mailer_test_imap_connection = IMAP-Verbindung testen
 symfony_mailer_imap_not_enabled = IMAP-Archivierung ist nicht aktiviert
 symfony_mailer_imap_connection_success = IMAP-Verbindung erfolgreich hergestellt
 symfony_mailer_imap_connection_error = IMAP-Verbindung fehlgeschlagen
+symfony_mailer_imap_extension_missing = Die IMAP-Erweiterung ist nicht installiert.
+symfony_mailer_imap_extension_missing_notice = Die IMAP-Funktionalität ist nur verfügbar, wenn die <a href="{0}">PHP IMAP</a>-Erweiterung installiert haben.  
+symfony_mailer_imap_folder_not_exist = Der angegebene IMAP-Ordner existiert nicht.
 
 # Log/Archiv
 symfony_mailer_log_title = E-Mail Log
