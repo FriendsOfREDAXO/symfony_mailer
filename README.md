@@ -512,6 +512,133 @@ Nehmen wir an, du hast den Detour-Modus aktiviert und die Detour-Adresse auf `te
 *   Vergiss nicht, den Detour-Modus zu deaktivieren, wenn du E-Mails an echte Benutzer senden möchtest.
 *   Die Detour-Adresse sollte immer eine gültige E-Mail-Adresse sein.
 
+## Extension Point SYMFONY_MAILER_PRE_SEND
+
+### Beschreibung
+
+Der Extension Point `SYMFONY_MAILER_PRE_SEND` ermöglicht es, E-Mails vor dem Versand zu prüfen und zu modifizieren. Er wird unmittelbar vor dem Versand der E-Mail ausgeführt. Der Versand kann durch Rückgabe von `false` oder einer Fehlermeldung als String abgebrochen werden.
+
+### Parameter
+
+- `$ep->getSubject()`: Enthält das `Email`-Objekt mit allen E-Mail-Informationen (Empfänger, Betreff, Inhalt etc.)
+
+### Rückgabewerte
+
+- `true`: E-Mail wird versendet
+- `false`: Versand wird abgebrochen
+- `string`: Versand wird abgebrochen, Fehlermeldung wird protokolliert
+
+### String verarbeiten 
+
+Gibt der Extensionpoint einen String zurück, kann dieser wie folgt ausgegeben werden. Er ist Teil der ErrorInfo.  
+
+```php 
+$mailer = new RexSymfonyMailer();
+if (!$mailer->send($email)) {
+    $error = $mailer->getErrorInfo();
+    echo $error['message']; // Enthält die Fehlermeldung vom Extension Point
+}
+```
+
+### Beispiele
+
+#### Spam-Filter
+
+```php
+rex_extension::register('SYMFONY_MAILER_PRE_SEND', function (rex_extension_point $ep) {
+    $email = $ep->getSubject();
+    $body = $email->getTextBody();
+    
+    $spamWords = ['casino', 'viagra', 'lottery'];
+    foreach ($spamWords as $word) {
+        if (stripos($body, $word) !== false) {
+            return 'E-Mail enthält unerlaubten Begriff: ' . $word;
+        }
+    }
+    return true;
+});
+```
+
+#### Domainbeschränkung
+
+```php
+rex_extension::register('SYMFONY_MAILER_PRE_SEND', function (rex_extension_point $ep) {
+    $email = $ep->getSubject();
+    $allowedDomains = ['example.com', 'mydomain.org'];
+    
+    foreach ($email->getTo() as $address) {
+        $domain = substr(strrchr($address->getAddress(), "@"), 1);
+        if (!in_array($domain, $allowedDomains)) {
+            return 'E-Mail-Domain nicht erlaubt: ' . $domain;
+        }
+    }
+    return true;
+});
+```
+
+#### ClamAV Virenscanner
+
+```php
+rex_extension::register('SYMFONY_MAILER_PRE_SEND', function (rex_extension_point $ep) {
+    $email = $ep->getSubject();
+    
+    // ClamAV muss auf dem Server installiert sein
+    if (!function_exists('clamav_scan_file')) {
+        return true;
+    }
+    
+    // Temporäre Datei für die E-Mail erstellen
+    $tmpFile = rex_path::cache('mail_scan_'.uniqid().'.tmp');
+    file_put_contents($tmpFile, $email->toString());
+    
+    // Virenprüfung durchführen
+    $result = clamav_scan_file($tmpFile);
+    unlink($tmpFile);
+    
+    if (CL_VIRUS === $result) {
+        return 'E-Mail wurde vom Virenscanner blockiert';
+    }
+    
+    return true;
+});
+```
+
+#### Disclaimer hinzufügen
+
+```php
+rex_extension::register('SYMFONY_MAILER_PRE_SEND', function (rex_extension_point $ep) {
+    $email = $ep->getSubject();
+    
+    $disclaimer = "\n\n---\nDiese E-Mail wurde automatisch erstellt.";
+    
+    if ($textBody = $email->getTextBody()) {
+        $email->text($textBody . $disclaimer);
+    }
+    if ($htmlBody = $email->getHtmlBody()) {
+        $email->html($htmlBody . '<br><hr>' . nl2br($disclaimer));
+    }
+    
+    return true;
+});
+```
+
+#### Größenbeschränkung für Anhänge
+
+```php
+rex_extension::register('SYMFONY_MAILER_PRE_SEND', function (rex_extension_point $ep) {
+    $email = $ep->getSubject();
+    $maxSize = 10 * 1024 * 1024; // 10MB
+    
+    foreach ($email->getAttachments() as $attachment) {
+        if (strlen($attachment->getBody()) > $maxSize) {
+            return 'Anhang zu groß. Maximale Größe: 10MB';
+        }
+    }
+    return true;
+});
+```
+
+
 ## Fehlerbehebung
 
 *   **Fehler beim Senden:** Check die Standard-Konfigurationen (Host, Port, Benutzername, Passwort) oder die eigenen SMTP-Einstellungen.
