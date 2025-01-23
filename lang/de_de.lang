@@ -58,7 +58,7 @@ symfony_mailer_imap_not_enabled = IMAP-Archivierung ist nicht aktiviert
 symfony_mailer_imap_connection_success = IMAP-Verbindung erfolgreich hergestellt
 symfony_mailer_imap_connection_error = IMAP-Verbindung fehlgeschlagen
 symfony_mailer_imap_extension_missing = Die IMAP-Erweiterung ist nicht installiert.
-symfony_mailer_imap_extension_missing_notice = Die IMAP-Funktionalität ist nur verfügbar, wenn die {0}-Erweiterung installiert ist.  
+symfony_mailer_imap_extension_missing_notice = Die IMAP-Funktionalität ist nur verfügbar, wenn die IMAP-Erweiterung installiert ist.  
 symfony_mailer_imap_folder_not_exist = Der angegebene IMAP-Ordner existiert nicht.
 
 # Log/Archiv
