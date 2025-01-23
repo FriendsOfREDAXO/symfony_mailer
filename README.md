@@ -528,6 +528,18 @@ Der Extension Point `SYMFONY_MAILER_PRE_SEND` ermöglicht es, E-Mails vor dem Ve
 - `false`: Versand wird abgebrochen
 - `string`: Versand wird abgebrochen, Fehlermeldung wird protokolliert
 
+### String verarbeiten 
+
+Gibt der Extensionpoint einen String zurück, kann dieser wie folgt ausgegeben werden. Er ist Teil der ErrorInfo.  
+
+```php 
+$mailer = new RexSymfonyMailer();
+if (!$mailer->send($email)) {
+    $error = $mailer->getErrorInfo();
+    echo $error['message']; // Enthält die Fehlermeldung vom Extension Point
+}
+```
+
 ### Beispiele
 
 #### Spam-Filter
