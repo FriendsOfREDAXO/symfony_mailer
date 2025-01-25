@@ -8,6 +8,7 @@ use Symfony\Component\Mime\Address;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use rex;
 use rex_addon;
+use rex_extension;
 use rex_path;
 use rex_i18n;
 use rex_log_file;
