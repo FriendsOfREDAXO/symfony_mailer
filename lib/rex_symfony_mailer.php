@@ -52,15 +52,22 @@ class RexSymfonyMailer
         $addon = rex_addon::get('symfony_mailer');
         $customConfigPath = rex_path::addonData('symfony_mailer', 'custom_config.yml');
         $customConfig = [];
-
+        $devMode = false;
+       
+        // Wenn eine custom_config.yml vorliegt kann die config nicht mehr überschrieben werden. DEV-Mode.
         if (file_exists($customConfigPath)) {
+            $devMode = true;
             try {
                 $customConfig = Yaml::parseFile($customConfigPath);
             } catch (\Exception $e) {
                 rex_logger::log('symfony_mailer', 'error', 'Failed to parse custom_config.yml: ' . $e->getMessage());
             }
         }
-
+        if(!$devMode)
+        {
+        rex_extension::registerPoint(new rex_extension_point('SYMFONY_MAILER_CONFIG', $customConfig));
+        }
+        
         // Laden der Konfiguration - Custom Config überschreibt Addon Config
         $this->fromAddress = $customConfig['from'] ?? $addon->getConfig('from');
         $this->fromName = $customConfig['name'] ?? $addon->getConfig('name');
@@ -87,7 +94,7 @@ class RexSymfonyMailer
             'password' => $customConfig['imap_password'] ?? $addon->getConfig('imap_password'),
             'folder' => $customConfig['imap_folder'] ?? $addon->getConfig('imap_folder', 'Sent')
         ];
-
+        
         $this->initializeMailer();
     }
 
