@@ -437,17 +437,17 @@
         },
         {
             "name": "symfony/mailer",
-            "version": "v7.2.0",
-            "version_normalized": "7.2.0.0",
+            "version": "v7.2.3",
+            "version_normalized": "7.2.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/mailer.git",
-                "reference": "e4d358702fb66e4c8a2af08e90e7271a62de39cc"
+                "reference": "f3871b182c44997cf039f3b462af4a48fb85f9d3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/mailer/zipball/e4d358702fb66e4c8a2af08e90e7271a62de39cc",
-                "reference": "e4d358702fb66e4c8a2af08e90e7271a62de39cc",
+                "url": "https://api.github.com/repos/symfony/mailer/zipball/f3871b182c44997cf039f3b462af4a48fb85f9d3",
+                "reference": "f3871b182c44997cf039f3b462af4a48fb85f9d3",
                 "shasum": ""
             },
             "require": {
@@ -472,7 +472,7 @@
                 "symfony/messenger": "^6.4|^7.0",
                 "symfony/twig-bridge": "^6.4|^7.0"
             },
-            "time": "2024-11-25T15:21:05+00:00",
+            "time": "2025-01-27T11:08:17+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -500,7 +500,7 @@
             "description": "Helps sending emails",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/mailer/tree/v7.2.0"
+                "source": "https://github.com/symfony/mailer/tree/v7.2.3"
             },
             "funding": [
                 {
@@ -520,17 +520,17 @@
         },
         {
             "name": "symfony/mime",
-            "version": "v7.2.1",
-            "version_normalized": "7.2.1.0",
+            "version": "v7.2.3",
+            "version_normalized": "7.2.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/mime.git",
-                "reference": "7f9617fcf15cb61be30f8b252695ed5e2bfac283"
+                "reference": "2fc3b4bd67e4747e45195bc4c98bea4628476204"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/mime/zipball/7f9617fcf15cb61be30f8b252695ed5e2bfac283",
-                "reference": "7f9617fcf15cb61be30f8b252695ed5e2bfac283",
+                "url": "https://api.github.com/repos/symfony/mime/zipball/2fc3b4bd67e4747e45195bc4c98bea4628476204",
+                "reference": "2fc3b4bd67e4747e45195bc4c98bea4628476204",
                 "shasum": ""
             },
             "require": {
@@ -555,7 +555,7 @@
                 "symfony/property-info": "^6.4|^7.0",
                 "symfony/serializer": "^6.4.3|^7.0.3"
             },
-            "time": "2024-12-07T08:50:44+00:00",
+            "time": "2025-01-27T11:08:17+00:00",
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -587,7 +587,7 @@
                 "mime-type"
             ],
             "support": {
-                "source": "https://github.com/symfony/mime/tree/v7.2.1"
+                "source": "https://github.com/symfony/mime/tree/v7.2.3"
             },
             "funding": [
                 {
