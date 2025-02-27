@@ -239,6 +239,30 @@ if ($mailer->send($email)) {
 }
 ```
 
+## Alternative Mailer (noch keine Ui vorhanden)
+
+Neben dem Standard-SMTP-Versand können auch andere Mailer-Dienste verwendet werden:
+
+### Mailchimp
+
+```php
+use FriendsOfRedaxo\SymfonyMailer\Helper\MailchimpTransport;
+
+$transport = new MailchimpTransport('your-api-key');
+$mailer = new Mailer($transport);
+```
+
+### MailJet
+
+```php
+use FriendsOfRedaxo\SymfonyMailer\Helper\MailjetTransport;
+
+$transport = new MailjetTransport('your-api-key', 'your-api-secret');
+$mailer = new Mailer($transport);
+```
+
+
+
 ## YForm Actions
 
 Dieses AddOn stellt zwei YForm Actions bereit, um E-Mails aus YForm Formularen zu senden: `rex_yform_action_symfony_mailer` und `rex_yform_action_symfony_mailer_tpl2email`.
