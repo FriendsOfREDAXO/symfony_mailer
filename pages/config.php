@@ -85,7 +85,7 @@ function outputTestResult($message, $success = true, $error = null)
 // Handle test connection
 if (rex_post('test_connection', 'boolean')) {
     try {
-        $mailer = new RexSymfonyMailer();
+        $mailer = new \FriendsOfRedaxo\SymfonyMailer\RexSymfonyMailer();
         $result = $mailer->testConnection();
         
         outputTestResult($result['message'], $result['success'], $result['error_details'] ?? null);
