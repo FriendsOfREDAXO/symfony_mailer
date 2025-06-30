@@ -210,12 +210,22 @@ class MicrosoftGraphTransport extends AbstractTransport
         return ['id' => uniqid('graph_', true)];
     }
 
-    public function testConnection(): bool
+    public function testConnection(): array
     {
+        $result = [
+            'success' => false,
+            'message' => '',
+            'details' => []
+        ];
+
         try {
+            // Schritt 1: Token anfordern
+            $result['details']['step1'] = 'Requesting access token...';
             $this->ensureValidAccessToken();
+            $result['details']['step1'] = '✅ Access token obtained successfully';
             
-            // Test API-Aufruf um die Verbindung zu testen
+            // Schritt 2: Graph API Test-Aufruf
+            $result['details']['step2'] = 'Testing Graph API connection...';
             $endpoint = 'https://graph.microsoft.com/v1.0/me';
             
             $ch = curl_init($endpoint);
@@ -226,12 +236,218 @@ class MicrosoftGraphTransport extends AbstractTransport
             
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
             curl_close($ch);
             
-            return $httpCode === 200;
+            $result['details']['http_code'] = $httpCode;
+            $result['details']['curl_error'] = $curlError;
+            
+            if ($curlError) {
+                $result['message'] = 'Network error: ' . $curlError;
+                return $result;
+            }
+            
+            if ($httpCode === 200) {
+                $userData = json_decode($response, true);
+                $result['success'] = true;
+                $result['message'] = 'Microsoft Graph connection successful';
+                $result['details']['step2'] = '✅ Graph API accessible';
+                $result['details']['user_info'] = [
+                    'displayName' => $userData['displayName'] ?? 'Unknown',
+                    'userPrincipalName' => $userData['userPrincipalName'] ?? 'Unknown',
+                    'id' => $userData['id'] ?? 'Unknown'
+                ];
+            } else {
+                $errorData = json_decode($response, true);
+                $result['message'] = 'Graph API error (HTTP ' . $httpCode . ')';
+                $result['details']['step2'] = '❌ Graph API error';
+                $result['details']['error_response'] = $errorData;
+                
+                // Spezifische Fehlermeldungen
+                if ($httpCode === 401) {
+                    $result['message'] .= ': Authentication failed - check credentials';
+                } elseif ($httpCode === 403) {
+                    $result['message'] .= ': Insufficient permissions - admin consent required';
+                } elseif (isset($errorData['error']['message'])) {
+                    $result['message'] .= ': ' . $errorData['error']['message'];
+                }
+            }
+            
         } catch (\Exception $e) {
-            return false;
+            $result['message'] = 'Exception: ' . $e->getMessage();
+            $result['details']['exception'] = [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ];
         }
+
+        return $result;
+    }
+
+    /**
+     * Test connection with detailed diagnostics (static method for easy access)
+     */
+    public static function diagnosticTest(string $tenantId, string $clientId, string $clientSecret): array
+    {
+        $result = [
+            'success' => false,
+            'message' => '',
+            'steps' => []
+        ];
+
+        // Schritt 1: Parameter validieren
+        $result['steps']['validation'] = [
+            'status' => 'running',
+            'message' => 'Validating parameters...'
+        ];
+
+        if (empty($tenantId) || empty($clientId) || empty($clientSecret)) {
+            $result['steps']['validation'] = [
+                'status' => 'failed',
+                'message' => '❌ Missing required parameters (tenant_id, client_id, client_secret)'
+            ];
+            $result['message'] = 'Configuration incomplete';
+            return $result;
+        }
+
+        $result['steps']['validation'] = [
+            'status' => 'passed', 
+            'message' => '✅ All parameters provided'
+        ];
+
+        // Schritt 2: Token-Endpoint testen
+        $result['steps']['token_request'] = [
+            'status' => 'running',
+            'message' => 'Requesting access token...'
+        ];
+
+        $endpoint = "https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token";
+        $postData = [
+            'grant_type' => 'client_credentials',
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
+            'scope' => 'https://graph.microsoft.com/.default'
+        ];
+
+        $ch = curl_init($endpoint);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/x-www-form-urlencoded'
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            $result['steps']['token_request'] = [
+                'status' => 'failed',
+                'message' => '❌ Network error: ' . $curlError
+            ];
+            $result['message'] = 'Network connectivity issue';
+            return $result;
+        }
+
+        if ($httpCode !== 200) {
+            $errorData = json_decode($response, true);
+            $errorMsg = $errorData['error_description'] ?? $errorData['error'] ?? 'Unknown error';
+            
+            $result['steps']['token_request'] = [
+                'status' => 'failed',
+                'message' => "❌ HTTP $httpCode: $errorMsg",
+                'http_code' => $httpCode,
+                'response' => $errorData
+            ];
+
+            // Spezifische Hilfetexte
+            if ($httpCode === 400) {
+                if (strpos($errorMsg, 'invalid_client') !== false) {
+                    $result['message'] = 'Invalid Client ID or Client Secret';
+                } elseif (strpos($errorMsg, 'invalid_request') !== false) {
+                    $result['message'] = 'Invalid Tenant ID or request format';
+                } else {
+                    $result['message'] = 'Bad request - check all credentials';
+                }
+            } elseif ($httpCode === 401) {
+                $result['message'] = 'Authentication failed - verify credentials';
+            } else {
+                $result['message'] = "Token request failed (HTTP $httpCode)";
+            }
+            return $result;
+        }
+
+        $tokenData = json_decode($response, true);
+        $result['steps']['token_request'] = [
+            'status' => 'passed',
+            'message' => '✅ Access token received',
+            'token_type' => $tokenData['token_type'],
+            'expires_in' => $tokenData['expires_in']
+        ];
+
+        // Schritt 3: Graph API testen
+        $result['steps']['graph_api'] = [
+            'status' => 'running',
+            'message' => 'Testing Graph API access...'
+        ];
+
+        $accessToken = $tokenData['access_token'];
+        $graphEndpoint = 'https://graph.microsoft.com/v1.0/me';
+
+        $ch = curl_init($graphEndpoint);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $accessToken
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            $result['steps']['graph_api'] = [
+                'status' => 'failed',
+                'message' => '❌ Graph API network error: ' . $curlError
+            ];
+            $result['message'] = 'Graph API connectivity issue';
+            return $result;
+        }
+
+        if ($httpCode === 200) {
+            $userData = json_decode($response, true);
+            $result['steps']['graph_api'] = [
+                'status' => 'passed',
+                'message' => '✅ Graph API accessible',
+                'user_info' => [
+                    'displayName' => $userData['displayName'] ?? 'N/A',
+                    'userPrincipalName' => $userData['userPrincipalName'] ?? 'N/A'
+                ]
+            ];
+            $result['success'] = true;
+            $result['message'] = 'Microsoft Graph connection fully functional';
+        } else {
+            $errorData = json_decode($response, true);
+            $result['steps']['graph_api'] = [
+                'status' => 'failed',
+                'message' => "❌ Graph API error (HTTP $httpCode)",
+                'http_code' => $httpCode,
+                'response' => $errorData
+            ];
+
+            if ($httpCode === 403) {
+                $result['message'] = 'Insufficient permissions - Admin consent required for Mail.Send';
+            } else {
+                $result['message'] = "Graph API access failed (HTTP $httpCode)";
+            }
+        }
+
+        return $result;
     }
 
     public function __toString(): string
