@@ -392,8 +392,8 @@ if (!$mailer->send($email, $graphSettings)) {
         'port' => 587,
         'security' => 'tls',
         'auth' => true,
-        'username' => 'smtp-user',
-        'password' => 'smtp-password',
+        'username' => 'your-smtp-username',
+        'password' => 'your-smtp-password',
     ];
     
     if ($mailer->send($email, $smtpSettings)) {
@@ -547,10 +547,10 @@ rex_extension::register('SYMFONY_MAILER_PRE_SEND', function (rex_extension_point
 |---------|------|-----------------|
 | **Setup-Komplexität** | Einfach | Mittel (Azure AD Setup) |
 | **Sicherheit** | Abhängig vom Server | OAuth 2.0, moderne Authentifizierung |
-| **Skalierbarkeit** | Begrenzt durch Server oder Anbieter | Hoch (Microsoft Cloud) |
+| **Skalierbarkeit** | Begrenzt durch Server | Hoch (Microsoft Cloud) |
 | **Monitoring** | Server-abhängig | Azure AD Logs, Graph Analytics |
 | **Kosten** | Server-abhängig | In Microsoft 365 enthalten |
-| **Wartung** | Selbst oder managed | Managed Service |
+| **Wartung** | Server-Updates nötig | Managed Service |
 | **On-Premise** | Möglich | Cloud-only |
 | **Rate Limits** | Server-abhängig | Microsoft Graph Limits |
 
