@@ -1,6 +1,7 @@
 <?php
 namespace FriendsOfRedaxo\SymfonyMailer;
 
+use FriendsOfRedaxo\SymfonyMailer\Helper\MicrosoftGraphTransport;
 use Symfony\Component\Mailer\Transport;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mime\Email;
@@ -28,6 +29,7 @@ class RexSymfonyMailer
     private string $fromName;
     private bool $archive;
     private bool $imapArchive;
+    private string $transportType;
 
     /**
      * @var array<string, mixed>
@@ -46,6 +48,11 @@ class RexSymfonyMailer
      * @var array<string, mixed>
      */
     private array $imapSettings = [];
+
+    /**
+     * @var array<string, mixed>
+     */
+    private array $graphSettings = [];
 
     public function __construct()
     {
@@ -77,6 +84,7 @@ class RexSymfonyMailer
         $this->debug = (bool)($customConfig['debug'] ?? $addon->getConfig('debug', false));
         $this->detourMode = (bool)($customConfig['detour_mode'] ?? $addon->getConfig('detour_mode', false));
         $this->detourAddress = $customConfig['detour_address'] ?? $addon->getConfig('detour_address', $addon->getConfig('test_address') ?? '');
+        $this->transportType = $customConfig['transport_type'] ?? $addon->getConfig('transport_type', 'smtp');
 
         $this->smtpSettings = [
             'host' => $customConfig['host'] ?? $addon->getConfig('host'),
@@ -85,6 +93,12 @@ class RexSymfonyMailer
             'auth' => $customConfig['auth'] ?? $addon->getConfig('auth'),
             'username' => $customConfig['username'] ?? $addon->getConfig('username'),
             'password' => $customConfig['password'] ?? $addon->getConfig('password'),
+        ];
+
+        $this->graphSettings = [
+            'tenant_id' => $customConfig['graph_tenant_id'] ?? $addon->getConfig('graph_tenant_id'),
+            'client_id' => $customConfig['graph_client_id'] ?? $addon->getConfig('graph_client_id'),
+            'client_secret' => $customConfig['graph_client_secret'] ?? $addon->getConfig('graph_client_secret'),
         ];
 
         $this->imapSettings = [
@@ -99,15 +113,24 @@ class RexSymfonyMailer
     }
 
     /**
-     * Initializes the mailer instance using the configured DSN.
+     * Initializes the mailer instance using the configured transport.
      *
      * @throws \RuntimeException if mailer initialization fails.
      */
     private function initializeMailer(): void
     {
-        $dsn = $this->buildDsn();
         try {
-            $transport = Transport::fromDsn($dsn);
+            if ($this->transportType === 'microsoft_graph') {
+                $transport = new MicrosoftGraphTransport(
+                    $this->graphSettings['tenant_id'],
+                    $this->graphSettings['client_id'],
+                    $this->graphSettings['client_secret']
+                );
+            } else {
+                $dsn = $this->buildDsn();
+                $transport = Transport::fromDsn($dsn);
+            }
+            
             $this->mailer = new Mailer($transport);
         } catch (\Exception $e) {
             $this->logError('Mailer initialization failed', $e);
@@ -116,7 +139,7 @@ class RexSymfonyMailer
     }
 
     /**
-     * Builds the DSN string for the mailer.
+     * Builds the DSN string for the SMTP mailer.
      *
      * @param array<string, mixed> $smtpSettings Optional settings to override the default SMTP settings.
      *
@@ -187,28 +210,57 @@ class RexSymfonyMailer
             return rex_i18n::msg('symfony_mailer_error_starttls');
         }
 
+        // Microsoft Graph spezifische Fehler
+        if (str_contains($error, 'Microsoft Graph authentication failed')) {
+            return rex_i18n::msg('symfony_mailer_error_graph_auth');
+        }
+
+        if (str_contains($error, 'Could not reach Microsoft Graph API')) {
+            return rex_i18n::msg('symfony_mailer_error_graph_connection');
+        }
+
         return null;
     }
 
     /**
-     * Tests the SMTP connection using provided settings or default.
+     * Tests the connection using provided settings or default.
      *
-     * @param array<string, mixed> $smtpSettings Optional settings to override the default SMTP settings.
+     * @param array<string, mixed> $settings Optional settings to override the defaults.
      *
      * @return array<string, mixed> An array containing the test result (success or failure) and a message.
      */
-    public function testConnection(array $smtpSettings = []): array
+    public function testConnection(array $settings = []): array
     {
         try {
-            $transport = Transport::fromDsn($this->buildDsn($smtpSettings));
-            $transport->start();
+            $transportType = $settings['transport_type'] ?? $this->transportType;
+            
+            if ($transportType === 'microsoft_graph') {
+                $graphSettings = array_merge($this->graphSettings, $settings);
+                $transport = new MicrosoftGraphTransport(
+                    $graphSettings['tenant_id'],
+                    $graphSettings['client_id'],
+                    $graphSettings['client_secret']
+                );
+                
+                $success = $transport->testConnection();
+                
+                return [
+                    'success' => $success,
+                    'message' => $success 
+                        ? rex_i18n::msg('symfony_mailer_test_connection_success') 
+                        : rex_i18n::msg('symfony_mailer_test_connection_error')
+                ];
+            } else {
+                $transport = Transport::fromDsn($this->buildDsn($settings));
+                $transport->start();
 
-            return [
-                'success' => true,
-                'message' => rex_i18n::msg('symfony_mailer_test_connection_success')
-            ];
+                return [
+                    'success' => true,
+                    'message' => rex_i18n::msg('symfony_mailer_test_connection_success')
+                ];
+            }
         } catch (\Exception $e) {
-            $this->logError('SMTP connection test failed', $e);
+            $this->logError('Connection test failed', $e);
 
             return [
                 'success' => false,
@@ -234,12 +286,12 @@ class RexSymfonyMailer
      * Sends an email.
      *
      * @param Email $email The email to be sent.
-     * @param array<string, mixed> $smtpSettings Optional settings to override the default SMTP settings.
+     * @param array<string, mixed> $settings Optional settings to override defaults.
      * @param string $imapFolder Optional folder to override the default imap folder.
      *
      * @return bool True if the email was sent successfully, false otherwise.
      */
-      public function send(Email $email, array $smtpSettings = [], string $imapFolder = ''): bool
+    public function send(Email $email, array $settings = [], string $imapFolder = ''): bool
     {
          // Pre-Send Extension Point
         $result = rex_extension::registerPoint(new rex_extension_point('SYMFONY_MAILER_PRE_SEND', $email));
@@ -249,11 +301,26 @@ class RexSymfonyMailer
           $this->log('ERROR', $email, $message);
           return false;
        }
+        
         $mailer = $this->mailer;
-        if (!empty($smtpSettings)) {
-            $dsn = $this->buildDsn($smtpSettings);
+        
+        // Check if custom settings are provided
+        if (!empty($settings)) {
+            $transportType = $settings['transport_type'] ?? $this->transportType;
+            
             try {
-                $transport = Transport::fromDsn($dsn);
+                if ($transportType === 'microsoft_graph') {
+                    $graphSettings = array_merge($this->graphSettings, $settings);
+                    $transport = new MicrosoftGraphTransport(
+                        $graphSettings['tenant_id'],
+                        $graphSettings['client_id'],
+                        $graphSettings['client_secret']
+                    );
+                } else {
+                    $dsn = $this->buildDsn($settings);
+                    $transport = Transport::fromDsn($dsn);
+                }
+                
                 $mailer = new Mailer($transport);
             } catch (\Exception $e) {
                 $this->logError('Failed to create custom mailer', $e);
@@ -266,11 +333,10 @@ class RexSymfonyMailer
             $this->applyDetour($email);
         }
 
-          // Zeilenumbrüche für Text E-Mails konvertieren (nur wenn Text-Body gesetzt wurde)
-         if ($email->getTextBody()) {
+        // Zeilenumbrüche für Text E-Mails konvertieren (nur wenn Text-Body gesetzt wurde)
+        if ($email->getTextBody()) {
             $email->text(str_replace("\n", "\r\n", $email->getTextBody()));
-         }
-
+        }
 
         try {
             $mailer->send($email);
@@ -395,8 +461,12 @@ class RexSymfonyMailer
     {
         $details = [
             'message' => $e->getMessage(),
-            'dsn' => $this->buildDsn()
+            'transport' => $this->transportType
         ];
+
+        if ($this->transportType === 'smtp') {
+            $details['dsn'] = $this->buildDsn();
+        }
 
         if ($hint = $this->getErrorHint($e->getMessage())) {
             $details['hint'] = $hint;
@@ -410,7 +480,6 @@ class RexSymfonyMailer
 
         return $details;
     }
-
 
     /**
      * Logs a message to the log file.
