@@ -392,8 +392,8 @@ if (!$mailer->send($email, $graphSettings)) {
         'port' => 587,
         'security' => 'tls',
         'auth' => true,
-        'username' => 'smtp-user',
-        'password' => 'smtp-password',
+        'username' => 'your-smtp-username',
+        'password' => 'your-smtp-password',
     ];
     
     if ($mailer->send($email, $smtpSettings)) {
