@@ -75,30 +75,49 @@ class MicrosoftGraphTransport extends AbstractTransport
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/x-www-form-urlencoded'
+            'Content-Type: application/x-www-form-urlencoded',
+            'Accept: application/json'
         ]);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        
+        if (curl_error($ch)) {
+            $curlError = curl_error($ch);
+            curl_close($ch);
+            throw new TransportException('CURL Error: ' . $curlError);
+        }
+        
         curl_close($ch);
 
         if ($httpCode !== 200) {
-            throw new TransportException(
-                sprintf('Microsoft Graph authentication failed with HTTP code %d', $httpCode)
-            );
+            $errorData = json_decode($response, true);
+            $errorMsg = 'HTTP ' . $httpCode;
+            
+            if (isset($errorData['error_description'])) {
+                $errorMsg .= ': ' . $errorData['error_description'];
+            } elseif (isset($errorData['error'])) {
+                $errorMsg .= ': ' . $errorData['error'];
+            }
+            
+            throw new TransportException($errorMsg);
         }
 
         $data = json_decode($response, true);
         
         if (!isset($data['access_token'])) {
             throw new TransportException(
-                'Failed to obtain access token from Microsoft Graph'
+                'Failed to obtain access token from Microsoft Graph: ' . 
+                (isset($data['error']) ? $data['error'] : 'Unknown error')
             );
         }
 
         $this->accessToken = $data['access_token'];
-        $this->tokenExpiry = time() + $data['expires_in'];
+        $this->tokenExpiry = time() + ($data['expires_in'] ?? 3600);
     }
 
     private function sendEmailViaGraph(Email $email): array
@@ -323,10 +342,25 @@ class MicrosoftGraphTransport extends AbstractTransport
         ];
 
         $endpoint = "https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token";
+        
+        // Sicherstellen, dass alle Werte trimmed und nicht leer sind
+        $trimmedClientId = trim($clientId);
+        $trimmedClientSecret = trim($clientSecret);
+        $trimmedTenantId = trim($tenantId);
+        
+        if (empty($trimmedClientId) || empty($trimmedClientSecret) || empty($trimmedTenantId)) {
+            $result['steps']['token_request'] = [
+                'status' => 'failed',
+                'message' => '❌ Empty credentials after trimming'
+            ];
+            $result['message'] = 'Credentials contain only whitespace or are empty';
+            return $result;
+        }
+        
         $postData = [
             'grant_type' => 'client_credentials',
-            'client_id' => $clientId,
-            'client_secret' => $clientSecret,
+            'client_id' => $trimmedClientId,
+            'client_secret' => $trimmedClientSecret,
             'scope' => 'https://graph.microsoft.com/.default'
         ];
 
@@ -335,19 +369,25 @@ class MicrosoftGraphTransport extends AbstractTransport
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/x-www-form-urlencoded'
+            'Content-Type: application/x-www-form-urlencoded',
+            'Accept: application/json',
+            'User-Agent: REDAXO-SymfonyMailer/1.1.0'
         ]);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = curl_error($ch);
+        $curlInfo = curl_getinfo($ch);
         curl_close($ch);
 
         if ($curlError) {
             $result['steps']['token_request'] = [
                 'status' => 'failed',
-                'message' => '❌ Network error: ' . $curlError
+                'message' => '❌ Network error: ' . $curlError,
+                'curl_info' => $curlInfo
             ];
             $result['message'] = 'Network connectivity issue';
             return $result;
@@ -355,21 +395,41 @@ class MicrosoftGraphTransport extends AbstractTransport
 
         if ($httpCode !== 200) {
             $errorData = json_decode($response, true);
-            $errorMsg = $errorData['error_description'] ?? $errorData['error'] ?? 'Unknown error';
+            $errorMsg = 'Unknown error';
+            
+            if (isset($errorData['error_description'])) {
+                $errorMsg = $errorData['error_description'];
+            } elseif (isset($errorData['error'])) {
+                $errorMsg = $errorData['error'];
+            }
             
             $result['steps']['token_request'] = [
                 'status' => 'failed',
                 'message' => "❌ HTTP $httpCode: $errorMsg",
                 'http_code' => $httpCode,
-                'response' => $errorData
+                'response' => $errorData,
+                'request_data' => [
+                    'endpoint' => $endpoint,
+                    'client_id' => $trimmedClientId,
+                    'client_secret_length' => strlen($trimmedClientSecret),
+                    'tenant_id' => $trimmedTenantId
+                ]
             ];
 
-            // Spezifische Hilfetexte
-            if ($httpCode === 400) {
+            // Spezifische Hilfetexte für AADSTS Fehler
+            if (strpos($errorMsg, 'AADSTS7000216') !== false) {
+                $result['message'] = 'Client Secret wird nicht akzeptiert - prüfen Sie das Secret in Azure';
+            } elseif (strpos($errorMsg, 'AADSTS70011') !== false) {
+                $result['message'] = 'Invalid scope - sollte normalerweise nicht auftreten';
+            } elseif (strpos($errorMsg, 'AADSTS90002') !== false) {
+                $result['message'] = 'Tenant not found - prüfen Sie die Tenant ID';
+            } elseif (strpos($errorMsg, 'AADSTS7000215') !== false) {
+                $result['message'] = 'Invalid client secret - das Secret ist falsch oder abgelaufen';
+            } elseif ($httpCode === 400) {
                 if (strpos($errorMsg, 'invalid_client') !== false) {
                     $result['message'] = 'Invalid Client ID or Client Secret';
                 } elseif (strpos($errorMsg, 'invalid_request') !== false) {
-                    $result['message'] = 'Invalid Tenant ID or request format';
+                    $result['message'] = 'Invalid request format or Tenant ID';
                 } else {
                     $result['message'] = 'Bad request - check all credentials';
                 }
