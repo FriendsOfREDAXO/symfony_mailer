@@ -1,497 +1,603 @@
 <?php
+namespace FriendsOfRedaxo\SymfonyMailer;
 
-namespace FriendsOfRedaxo\SymfonyMailer\Helper;
-
-use Symfony\Component\Mailer\Transport\AbstractTransport;
-use Symfony\Component\Mailer\SentMessage;
-use Symfony\Component\Mime\MessageConverter;
+use FriendsOfRedaxo\SymfonyMailer\Helper\MicrosoftGraphTransport;
+use Symfony\Component\Mailer\Transport;
+use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mime\Email;
-use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use rex;
+use rex_addon;
+use rex_extension;
+use rex_extension_point;
+use rex_path;
+use rex_i18n;
+use rex_log_file;
+use rex_file;
+use rex_dir;
+use rex_logger;
+use Symfony\Component\Yaml\Yaml;
+use function is_dir;
+use function is_file;
 
-class MicrosoftGraphTransport extends AbstractTransport
+class RexSymfonyMailer
 {
-    private string $tenantId;
-    private string $clientId;
-    private string $clientSecret;
-    private ?string $accessToken = null;
-    private ?int $tokenExpiry = null;
+    private Mailer $mailer;
+    private string $charset;
+    private string $fromAddress;
+    private string $fromName;
+    private bool $archive;
+    private bool $imapArchive;
+    private string $transportType;
 
-    public function __construct(string $tenantId, string $clientId, string $clientSecret)
-    {
-        parent::__construct();
-        
-        $this->tenantId = $tenantId;
-        $this->clientId = $clientId;
-        $this->clientSecret = $clientSecret;
-    }
+    /**
+     * @var array<string, mixed>
+     */
+    private array $errorInfo = [];
+    private bool $debug;
+    private bool $detourMode;
+    private string $detourAddress;
 
-    protected function doSend(SentMessage $message): void
+    /**
+     * @var array<string, mixed>
+     */
+    private array $smtpSettings = [];
+
+    /**
+     * @var array<string, mixed>
+     */
+    private array $imapSettings = [];
+
+    /**
+     * @var array<string, mixed>
+     */
+    private array $graphSettings = [];
+
+    public function __construct()
     {
-        $email = MessageConverter::toEmail($message->getOriginalMessage());
-        
-        try {
-            $this->ensureValidAccessToken();
-            $response = $this->sendEmailViaGraph($email);
-            
-            if (!isset($response['id'])) {
-                throw new TransportException(
-                    sprintf('Unable to send email via Microsoft Graph: %s', 
-                        $response['error']['message'] ?? 'Unknown error')
-                );
+        $addon = rex_addon::get('symfony_mailer');
+        $customConfigPath = rex_path::addonData('symfony_mailer', 'custom_config.yml');
+        $customConfig = [];
+        $devMode = false;
+       
+        // Wenn eine custom_config.yml vorliegt kann die config nicht mehr überschrieben werden. DEV-Mode.
+        if (file_exists($customConfigPath)) {
+            $devMode = true;
+            try {
+                $customConfig = Yaml::parseFile($customConfigPath);
+            } catch (\Exception $e) {
+                rex_logger::log('symfony_mailer', 'error', 'Failed to parse custom_config.yml: ' . $e->getMessage());
             }
-        } catch (\Exception $e) {
-            throw new TransportException(
-                'Could not reach Microsoft Graph API: ' . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
         }
-    }
-
-    private function ensureValidAccessToken(): void
-    {
-        if ($this->accessToken && $this->tokenExpiry && time() < $this->tokenExpiry - 300) {
-            return; // Token ist noch 5 Minuten gültig
-        }
-
-        $this->requestAccessToken();
-    }
-
-    private function requestAccessToken(): void
-    {
-        $endpoint = sprintf(
-            'https://login.microsoftonline.com/%s/oauth2/v2.0/token',
-            $this->tenantId
-        );
-
-        // FIXED: Manueller POST-String statt http_build_query()
-        // Grund: http_build_query() scheint auf diesem Server nicht zu funktionieren
-        $postString = 'client_id=' . urlencode($this->clientId) . 
-                     '&client_secret=' . urlencode($this->clientSecret) . 
-                     '&scope=' . urlencode('https://graph.microsoft.com/.default') . 
-                     '&grant_type=client_credentials';
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $endpoint);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $postString);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        
-        if (curl_errno($ch) || $httpCode >= 400) {
-            $curlError = curl_error($ch);
-            curl_close($ch);
-            throw new TransportException("HTTP $httpCode: $response" . ($curlError ? " (CURL: $curlError)" : ""));
+        if(!$devMode)
+        {
+        rex_extension::registerPoint(new rex_extension_point('SYMFONY_MAILER_CONFIG', $customConfig));
         }
         
-        curl_close($ch);
+        // Laden der Konfiguration - Custom Config überschreibt Addon Config
+        $this->fromAddress = $customConfig['from'] ?? $addon->getConfig('from');
+        $this->fromName = $customConfig['name'] ?? $addon->getConfig('name');
+        $this->charset = $customConfig['charset'] ?? $addon->getConfig('charset', 'utf-8');
+        $this->archive = (bool)($customConfig['archive'] ?? $addon->getConfig('archive', false));
+        $this->imapArchive = (bool)($customConfig['imap_archive'] ?? $addon->getConfig('imap_archive', false));
+        $this->debug = (bool)($customConfig['debug'] ?? $addon->getConfig('debug', false));
+        $this->detourMode = (bool)($customConfig['detour_mode'] ?? $addon->getConfig('detour_mode', false));
+        $this->detourAddress = $customConfig['detour_address'] ?? $addon->getConfig('detour_address', $addon->getConfig('test_address') ?? '');
+        $this->transportType = $customConfig['transport_type'] ?? $addon->getConfig('transport_type', 'smtp');
 
-        $data = json_decode($response, true);
-        
-        if (!isset($data['access_token'])) {
-            throw new TransportException(
-                'Failed to obtain access token: ' . ($response ?: 'Unknown error')
-            );
-        }
-
-        $this->accessToken = $data['access_token'];
-        $this->tokenExpiry = time() + ($data['expires_in'] ?? 3600);
-    }
-
-    private function sendEmailViaGraph(Email $email): array
-    {
-        // Bestimme den Sender (User Principal Name oder Email)
-        $fromAddress = $email->getFrom()[0]->getAddress();
-        
-        $endpoint = sprintf(
-            'https://graph.microsoft.com/v1.0/users/%s/sendMail',
-            urlencode($fromAddress)
-        );
-
-        $message = [
-            'message' => [
-                'subject' => $email->getSubject(),
-                'body' => [
-                    'contentType' => $email->getHtmlBody() ? 'HTML' : 'Text',
-                    'content' => $email->getHtmlBody() ?: $email->getTextBody()
-                ],
-                'from' => [
-                    'emailAddress' => [
-                        'address' => $email->getFrom()[0]->getAddress(),
-                        'name' => $email->getFrom()[0]->getName() ?: $email->getFrom()[0]->getAddress()
-                    ]
-                ],
-                'toRecipients' => array_map(function($address) {
-                    return [
-                        'emailAddress' => [
-                            'address' => $address->getAddress(),
-                            'name' => $address->getName() ?: $address->getAddress()
-                        ]
-                    ];
-                }, $email->getTo())
-            ]
+        $this->smtpSettings = [
+            'host' => $customConfig['host'] ?? $addon->getConfig('host'),
+            'port' => $customConfig['port'] ?? $addon->getConfig('port'),
+            'security' => $customConfig['security'] ?? $addon->getConfig('security'),
+            'auth' => $customConfig['auth'] ?? $addon->getConfig('auth'),
+            'username' => $customConfig['username'] ?? $addon->getConfig('username'),
+            'password' => $customConfig['password'] ?? $addon->getConfig('password'),
         ];
 
-        // CC-Empfänger hinzufügen
-        if ($cc = $email->getCc()) {
-            $message['message']['ccRecipients'] = array_map(function($address) {
-                return [
-                    'emailAddress' => [
-                        'address' => $address->getAddress(),
-                        'name' => $address->getName() ?: $address->getAddress()
-                    ]
-                ];
-            }, $cc);
-        }
-
-        // BCC-Empfänger hinzufügen
-        if ($bcc = $email->getBcc()) {
-            $message['message']['bccRecipients'] = array_map(function($address) {
-                return [
-                    'emailAddress' => [
-                        'address' => $address->getAddress(),
-                        'name' => $address->getName() ?: $address->getAddress()
-                    ]
-                ];
-            }, $bcc);
-        }
-
-        // Reply-To hinzufügen
-        if ($replyTo = $email->getReplyTo()) {
-            $message['message']['replyTo'] = array_map(function($address) {
-                return [
-                    'emailAddress' => [
-                        'address' => $address->getAddress(),
-                        'name' => $address->getName() ?: $address->getAddress()
-                    ]
-                ];
-            }, $replyTo);
-        }
-
-        // Anhänge hinzufügen
-        if ($attachments = $email->getAttachments()) {
-            $message['message']['attachments'] = array_map(function($attachment) {
-                return [
-                    '@odata.type' => '#microsoft.graph.fileAttachment',
-                    'name' => $attachment->getFilename() ?: 'attachment',
-                    'contentType' => $attachment->getContentType(),
-                    'contentBytes' => base64_encode($attachment->getBody())
-                ];
-            }, $attachments);
-        }
-
-        $ch = curl_init($endpoint);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($message));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $this->accessToken,
-            'Content-Type: application/json'
-        ]);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 202) { // Microsoft Graph returns 202 Accepted for successful send
-            $errorData = json_decode($response, true);
-            throw new TransportException(
-                sprintf('Microsoft Graph API returned HTTP code %d: %s', 
-                    $httpCode, 
-                    $errorData['error']['message'] ?? $response)
-            );
-        }
-
-        // Bei erfolgreichem Versand gibt Graph eine 202 Accepted zurück
-        // Wir simulieren eine ID für Kompatibilität
-        return ['id' => uniqid('graph_', true)];
-    }
-
-    public function testConnection(): array
-    {
-        $result = [
-            'success' => false,
-            'message' => '',
-            'details' => []
+        $this->graphSettings = [
+            'tenant_id' => $customConfig['graph_tenant_id'] ?? $addon->getConfig('graph_tenant_id'),
+            'client_id' => $customConfig['graph_client_id'] ?? $addon->getConfig('graph_client_id'),
+            'client_secret' => $customConfig['graph_client_secret'] ?? $addon->getConfig('graph_client_secret'),
         ];
 
-        try {
-            // Schritt 1: Token anfordern
-            $result['details']['step1'] = 'Requesting access token...';
-            $this->ensureValidAccessToken();
-            $result['details']['step1'] = '✅ Access token obtained successfully';
-            
-            // Schritt 2: Graph API Test-Aufruf
-            $result['details']['step2'] = 'Testing Graph API connection...';
-            $endpoint = 'https://graph.microsoft.com/v1.0/me';
-            
-            $ch = curl_init($endpoint);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $this->accessToken
-            ]);
-            
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError = curl_error($ch);
-            curl_close($ch);
-            
-            $result['details']['http_code'] = $httpCode;
-            $result['details']['curl_error'] = $curlError;
-            
-            if ($curlError) {
-                $result['message'] = 'Network error: ' . $curlError;
-                return $result;
-            }
-            
-            if ($httpCode === 200) {
-                $userData = json_decode($response, true);
-                $result['success'] = true;
-                $result['message'] = 'Microsoft Graph connection successful';
-                $result['details']['step2'] = '✅ Graph API accessible';
-                $result['details']['user_info'] = [
-                    'displayName' => $userData['displayName'] ?? 'Unknown',
-                    'userPrincipalName' => $userData['userPrincipalName'] ?? 'Unknown',
-                    'id' => $userData['id'] ?? 'Unknown'
-                ];
-            } else {
-                $errorData = json_decode($response, true);
-                $result['message'] = 'Graph API error (HTTP ' . $httpCode . ')';
-                $result['details']['step2'] = '❌ Graph API error';
-                $result['details']['error_response'] = $errorData;
-                
-                // Spezifische Fehlermeldungen
-                if ($httpCode === 401) {
-                    $result['message'] .= ': Authentication failed - check credentials';
-                } elseif ($httpCode === 403) {
-                    $result['message'] .= ': Insufficient permissions - admin consent required';
-                } elseif (isset($errorData['error']['message'])) {
-                    $result['message'] .= ': ' . $errorData['error']['message'];
-                }
-            }
-            
-        } catch (\Exception $e) {
-            $result['message'] = 'Exception: ' . $e->getMessage();
-            $result['details']['exception'] = [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ];
-        }
-
-        return $result;
+        $this->imapSettings = [
+            'host' => $customConfig['imap_host'] ?? $addon->getConfig('imap_host'),
+            'port' => $customConfig['imap_port'] ?? $addon->getConfig('imap_port', 993),
+            'username' => $customConfig['imap_username'] ?? $addon->getConfig('imap_username'),
+            'password' => $customConfig['imap_password'] ?? $addon->getConfig('imap_password'),
+            'folder' => $customConfig['imap_folder'] ?? $addon->getConfig('imap_folder', 'Sent')
+        ];
+        
+        $this->initializeMailer();
     }
 
     /**
-     * Test connection with detailed diagnostics (static method for easy access)
+     * Initializes the mailer instance using the configured transport.
+     *
+     * @throws \RuntimeException if mailer initialization fails.
      */
-    public static function diagnosticTest(string $tenantId, string $clientId, string $clientSecret): array
+    private function initializeMailer(): void
     {
-        $result = [
-            'success' => false,
-            'message' => '',
-            'steps' => []
-        ];
-
-        // Schritt 1: Parameter validieren
-        $result['steps']['validation'] = [
-            'status' => 'running',
-            'message' => 'Validating parameters...'
-        ];
-
-        if (empty($tenantId) || empty($clientId) || empty($clientSecret)) {
-            $result['steps']['validation'] = [
-                'status' => 'failed',
-                'message' => '❌ Missing required parameters (tenant_id, client_id, client_secret)'
-            ];
-            $result['message'] = 'Configuration incomplete';
-            return $result;
-        }
-
-        $result['steps']['validation'] = [
-            'status' => 'passed', 
-            'message' => '✅ All parameters provided'
-        ];
-
-        // Schritt 2: Token-Endpoint testen
-        $result['steps']['token_request'] = [
-            'status' => 'running',
-            'message' => 'Requesting access token...'
-        ];
-
-        $endpoint = "https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token";
-        
-        // Sicherstellen, dass alle Werte trimmed und nicht leer sind
-        $trimmedClientId = trim($clientId);
-        $trimmedClientSecret = trim($clientSecret);
-        $trimmedTenantId = trim($tenantId);
-        
-        if (empty($trimmedClientId) || empty($trimmedClientSecret) || empty($trimmedTenantId)) {
-            $result['steps']['token_request'] = [
-                'status' => 'failed',
-                'message' => '❌ Empty credentials after trimming'
-            ];
-            $result['message'] = 'Credentials contain only whitespace or are empty';
-            return $result;
-        }
-        
-        $postData = [
-            'grant_type' => 'client_credentials',
-            'client_id' => $trimmedClientId,
-            'client_secret' => $trimmedClientSecret,
-            'scope' => 'https://graph.microsoft.com/.default'
-        ];
-
-        $ch = curl_init($endpoint);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/x-www-form-urlencoded',
-            'Accept: application/json',
-            'User-Agent: REDAXO-SymfonyMailer/1.1.0'
-        ]);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        $curlInfo = curl_getinfo($ch);
-        curl_close($ch);
-
-        if ($curlError) {
-            $result['steps']['token_request'] = [
-                'status' => 'failed',
-                'message' => '❌ Network error: ' . $curlError,
-                'curl_info' => $curlInfo
-            ];
-            $result['message'] = 'Network connectivity issue';
-            return $result;
-        }
-
-        if ($httpCode !== 200) {
-            $errorData = json_decode($response, true);
-            $errorMsg = 'Unknown error';
-            
-            if (isset($errorData['error_description'])) {
-                $errorMsg = $errorData['error_description'];
-            } elseif (isset($errorData['error'])) {
-                $errorMsg = $errorData['error'];
+        try {
+            if ($this->transportType === 'microsoft_graph') {
+                $transport = new MicrosoftGraphTransport(
+                    $this->graphSettings['tenant_id'],
+                    $this->graphSettings['client_id'],
+                    $this->graphSettings['client_secret']
+                );
+            } else {
+                $dsn = $this->buildDsn();
+                $transport = Transport::fromDsn($dsn);
             }
             
-            $result['steps']['token_request'] = [
-                'status' => 'failed',
-                'message' => "❌ HTTP $httpCode: $errorMsg",
-                'http_code' => $httpCode,
-                'response' => $errorData,
-                'request_data' => [
-                    'endpoint' => $endpoint,
-                    'client_id' => $trimmedClientId,
-                    'client_secret_length' => strlen($trimmedClientSecret),
-                    'tenant_id' => $trimmedTenantId
-                ]
-            ];
-
-            // Spezifische Hilfetexte für AADSTS Fehler
-            if (strpos($errorMsg, 'AADSTS7000216') !== false) {
-                $result['message'] = 'Client Secret wird nicht akzeptiert - prüfen Sie das Secret in Azure';
-            } elseif (strpos($errorMsg, 'AADSTS70011') !== false) {
-                $result['message'] = 'Invalid scope - sollte normalerweise nicht auftreten';
-            } elseif (strpos($errorMsg, 'AADSTS90002') !== false) {
-                $result['message'] = 'Tenant not found - prüfen Sie die Tenant ID';
-            } elseif (strpos($errorMsg, 'AADSTS7000215') !== false) {
-                $result['message'] = 'Invalid client secret - das Secret ist falsch oder abgelaufen';
-            } elseif ($httpCode === 400) {
-                if (strpos($errorMsg, 'invalid_client') !== false) {
-                    $result['message'] = 'Invalid Client ID or Client Secret';
-                } elseif (strpos($errorMsg, 'invalid_request') !== false) {
-                    $result['message'] = 'Invalid request format or Tenant ID';
-                } else {
-                    $result['message'] = 'Bad request - check all credentials';
-                }
-            } elseif ($httpCode === 401) {
-                $result['message'] = 'Authentication failed - verify credentials';
-            } else {
-                $result['message'] = "Token request failed (HTTP $httpCode)";
-            }
-            return $result;
+            $this->mailer = new Mailer($transport);
+        } catch (\Exception $e) {
+            $this->logError('Mailer initialization failed', $e);
+            throw new \RuntimeException('Failed to initialize mailer: ' . $e->getMessage(), 0, $e);
         }
-
-        $tokenData = json_decode($response, true);
-        $result['steps']['token_request'] = [
-            'status' => 'passed',
-            'message' => '✅ Access token received',
-            'token_type' => $tokenData['token_type'],
-            'expires_in' => $tokenData['expires_in']
-        ];
-
-        // Schritt 3: Graph API testen
-        $result['steps']['graph_api'] = [
-            'status' => 'running',
-            'message' => 'Testing Graph API access...'
-        ];
-
-        $accessToken = $tokenData['access_token'];
-        $graphEndpoint = 'https://graph.microsoft.com/v1.0/me';
-
-        $ch = curl_init($graphEndpoint);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $accessToken
-        ]);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-
-        if ($curlError) {
-            $result['steps']['graph_api'] = [
-                'status' => 'failed',
-                'message' => '❌ Graph API network error: ' . $curlError
-            ];
-            $result['message'] = 'Graph API connectivity issue';
-            return $result;
-        }
-
-        if ($httpCode === 200) {
-            $userData = json_decode($response, true);
-            $result['steps']['graph_api'] = [
-                'status' => 'passed',
-                'message' => '✅ Graph API accessible',
-                'user_info' => [
-                    'displayName' => $userData['displayName'] ?? 'N/A',
-                    'userPrincipalName' => $userData['userPrincipalName'] ?? 'N/A'
-                ]
-            ];
-            $result['success'] = true;
-            $result['message'] = 'Microsoft Graph connection fully functional';
-        } else {
-            $errorData = json_decode($response, true);
-            $result['steps']['graph_api'] = [
-                'status' => 'failed',
-                'message' => "❌ Graph API error (HTTP $httpCode)",
-                'http_code' => $httpCode,
-                'response' => $errorData
-            ];
-
-            if ($httpCode === 403) {
-                $result['message'] = 'Insufficient permissions - Admin consent required for Mail.Send';
-            } else {
-                $result['message'] = "Graph API access failed (HTTP $httpCode)";
-            }
-        }
-
-        return $result;
     }
 
-    public function __toString(): string
+    /**
+     * Builds the DSN string for the SMTP mailer.
+     *
+     * @param array<string, mixed> $smtpSettings Optional settings to override the default SMTP settings.
+     *
+     * @return string The DSN string.
+     */
+    private function buildDsn(array $smtpSettings = []): string
     {
-        return 'microsoft-graph';
+        $settings = empty($smtpSettings) ? $this->smtpSettings : $smtpSettings;
+
+        $host = $settings['host'];
+        $port = $settings['port'];
+        $security = $settings['security'];
+        $auth = $settings['auth'];
+        $username = $settings['username'];
+        $password = $settings['password'];
+
+        $dsn = 'smtp://';
+
+        if ($auth && $username && $password) {
+            $dsn .= urlencode($username) . ':' . urlencode($password) . '@';
+        }
+
+        $dsn .= $host . ':' . $port;
+
+        $options = [];
+        if ($security) {
+            $options['transport'] = 'smtp';
+            $options['encryption'] = $security;
+        }
+
+        if (!empty($options)) {
+            $dsn .= '?' . http_build_query($options);
+        }
+
+        return $dsn;
+    }
+
+    /**
+     * Gets a user-friendly error hint based on the error message.
+     *
+     * @param string $error The error message.
+     *
+     * @return ?string The error hint or null if no hint found.
+     */
+    private function getErrorHint(string $error): ?string
+    {
+        if (str_contains($error, 'authentication failed') || str_contains($error, 'Expected response code "235"')) {
+            return rex_i18n::msg('symfony_mailer_error_auth');
+        }
+
+        if (str_contains($error, 'Connection could not be established')) {
+            return rex_i18n::msg('symfony_mailer_error_connection');
+        }
+
+        if (str_contains($error, 'SSL')) {
+            return rex_i18n::msg('symfony_mailer_error_ssl');
+        }
+
+        if (str_contains($error, 'relay access denied') || str_contains($error, 'relay not permitted')) {
+            return rex_i18n::msg('symfony_mailer_error_relay');
+        }
+
+        if (str_contains($error, 'sender address rejected')) {
+            return rex_i18n::msg('symfony_mailer_error_sender');
+        }
+
+        if (str_contains($error, 'STARTTLS')) {
+            return rex_i18n::msg('symfony_mailer_error_starttls');
+        }
+
+        // Microsoft Graph spezifische Fehler
+        if (str_contains($error, 'Microsoft Graph authentication failed')) {
+            return rex_i18n::msg('symfony_mailer_error_graph_auth');
+        }
+
+        if (str_contains($error, 'Could not reach Microsoft Graph API')) {
+            return rex_i18n::msg('symfony_mailer_error_graph_connection');
+        }
+
+        return null;
+    }
+
+    /**
+     * Tests the connection using provided settings or default.
+     *
+     * @param array<string, mixed> $settings Optional settings to override the defaults.
+     *
+     * @return array<string, mixed> An array containing the test result (success or failure) and a message.
+     */
+    public function testConnection(array $settings = []): array
+    {
+        try {
+            $transportType = $settings['transport_type'] ?? $this->transportType;
+            
+            if ($transportType === 'microsoft_graph') {
+                $graphSettings = array_merge($this->graphSettings, $settings);
+                
+                // Verwende die detaillierte Diagnose
+                $result = MicrosoftGraphTransport::diagnosticTest(
+                    $graphSettings['tenant_id'],
+                    $graphSettings['client_id'],
+                    $graphSettings['client_secret']
+                );
+                
+                return [
+                    'success' => $result['success'],
+                    'message' => $result['message'],
+                    'error_details' => [
+                        'transport' => 'microsoft_graph',
+                        'steps' => $result['steps'],
+                        'hint' => $this->getGraphErrorHint($result)
+                    ]
+                ];
+            } else {
+                $transport = Transport::fromDsn($this->buildDsn($settings));
+                $transport->start();
+
+                return [
+                    'success' => true,
+                    'message' => rex_i18n::msg('symfony_mailer_test_connection_success')
+                ];
+            }
+        } catch (\Exception $e) {
+            $this->logError('Connection test failed', $e);
+
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error_details' => $this->getErrorDetails($e)
+            ];
+        }
+    }
+
+    /**
+     * Get specific error hints for Microsoft Graph issues
+     */
+    private function getGraphErrorHint(array $diagnosticResult): string
+    {
+        if ($diagnosticResult['success']) {
+            return '';
+        }
+
+        // Analysiere die Schritte für spezifische Hinweise
+        $steps = $diagnosticResult['steps'];
+
+        if (isset($steps['validation']) && $steps['validation']['status'] === 'failed') {
+            return 'Überprüfen Sie die Microsoft Graph Konfiguration im REDAXO Backend.';
+        }
+
+        if (isset($steps['token_request']) && $steps['token_request']['status'] === 'failed') {
+            $httpCode = $steps['token_request']['http_code'] ?? 0;
+            
+            switch ($httpCode) {
+                case 400:
+                    return 'Fehlerhafte Zugangsdaten. Überprüfen Sie Tenant ID, Client ID und Client Secret in der Azure App Registration.';
+                case 401:
+                    return 'Authentifizierung fehlgeschlagen. Stellen Sie sicher, dass die App Registration aktiv ist.';
+                default:
+                    return 'Token-Anfrage fehlgeschlagen. Überprüfen Sie die Azure AD Konfiguration.';
+            }
+        }
+
+        if (isset($steps['graph_api']) && $steps['graph_api']['status'] === 'failed') {
+            $httpCode = $steps['graph_api']['http_code'] ?? 0;
+            
+            if ($httpCode === 403) {
+                return 'Unzureichende Berechtigungen. Gehen Sie in der Azure App Registration zu "API permissions" und erteilen Sie "Admin consent" für "Mail.Send".';
+            }
+            
+            return 'Graph API Zugriff fehlgeschlagen. Überprüfen Sie die App-Berechtigungen.';
+        }
+
+        return 'Unbekannter Microsoft Graph Fehler. Aktivieren Sie Debug-Modus für weitere Details.';
+    }
+
+    /**
+     * Creates a new Email instance with default from address and charset.
+     *
+     * @return Email The new Email instance.
+     */
+    public function createEmail(): Email
+    {
+        $email = new Email();
+        $email->from(new Address($this->fromAddress, $this->fromName));
+        return $email;
+    }
+
+    /**
+     * Sends an email.
+     *
+     * @param Email $email The email to be sent.
+     * @param array<string, mixed> $settings Optional settings to override defaults.
+     * @param string $imapFolder Optional folder to override the default imap folder.
+     *
+     * @return bool True if the email was sent successfully, false otherwise.
+     */
+    public function send(Email $email, array $settings = [], string $imapFolder = ''): bool
+    {
+         // Pre-Send Extension Point
+        $result = rex_extension::registerPoint(new rex_extension_point('SYMFONY_MAILER_PRE_SEND', $email));
+         if ($result === false) {
+           $message = is_string($result) ? $result : 'Email sending aborted by extension';
+           $this->errorInfo = ['message' => $message];
+          $this->log('ERROR', $email, $message);
+          return false;
+       }
+        
+        $mailer = $this->mailer;
+        
+        // Check if custom settings are provided
+        if (!empty($settings)) {
+            $transportType = $settings['transport_type'] ?? $this->transportType;
+            
+            try {
+                if ($transportType === 'microsoft_graph') {
+                    $graphSettings = array_merge($this->graphSettings, $settings);
+                    $transport = new MicrosoftGraphTransport(
+                        $graphSettings['tenant_id'],
+                        $graphSettings['client_id'],
+                        $graphSettings['client_secret']
+                    );
+                } else {
+                    $dsn = $this->buildDsn($settings);
+                    $transport = Transport::fromDsn($dsn);
+                }
+                
+                $mailer = new Mailer($transport);
+            } catch (\Exception $e) {
+                $this->logError('Failed to create custom mailer', $e);
+                return false;
+            }
+        }
+
+        // Detour-Modus aktiv?
+        if ($this->detourMode) {
+            $this->applyDetour($email);
+        }
+
+        // Zeilenumbrüche für Text E-Mails konvertieren (nur wenn Text-Body gesetzt wurde)
+        if ($email->getTextBody()) {
+            $email->text(str_replace("\n", "\r\n", $email->getTextBody()));
+        }
+
+        try {
+            $mailer->send($email);
+
+            if ($this->archive) {
+                $this->archiveEmail($email);
+            }
+
+            if ($this->imapArchive) {
+                $this->archiveToImap($email, $imapFolder);
+            }
+
+            // Log Body (gekürzt)
+           $body = $email->getTextBody() ?: $email->getHtmlBody();
+            if (strlen($body) > 200) {
+                $body = substr($body, 0, 200) . '... (gekürzt)';
+            }
+            $this->log('OK', $email, '', $body);
+
+            return true;
+        } catch (TransportExceptionInterface $e) {
+             $this->logError('Failed to send email', $e);
+            return false;
+        }
+    }
+
+    /**
+     * Applies the detour address to the email.
+     *
+     * @param Email $email The email to apply the detour to.
+     */
+    private function applyDetour(Email $email): void
+    {
+        $originalTo = $email->getTo();
+        $email->to(new Address($this->detourAddress, 'Detour'));
+
+        // Setze die ursprünglichen Empfänger in den Header, um sie im E-Mail-Client einsehen zu können.
+        $originalTos = [];
+        foreach ($originalTo as $address) {
+            $originalTos[] = $address->toString();
+        }
+          $email->getHeaders()->addTextHeader('X-Original-To', implode(', ', $originalTos));
+    }
+
+    /**
+     * Archives the email to the local filesystem.
+     *
+     * @param Email $email The email to be archived.
+     */
+    private function archiveEmail(Email $email): void
+    {
+        $dir = self::getArchiveFolder() . '/' . date('Y') . '/' . date('m');
+        if (!is_dir($dir)) {
+            rex_dir::create($dir);
+        }
+
+        $count = 1;
+        $filename = date('Y-m-d_H_i_s') . '.eml';
+        while (is_file($dir . '/' . $filename)) {
+            $filename = date('Y-m-d_H_i_s') . '_' . (++$count) . '.eml';
+        }
+
+        rex_file::put($dir . '/' . $filename, $email->toString());
+    }
+
+    /**
+     * Archives the email to an IMAP folder.
+     *
+     * @param Email $email The email to be archived.
+     * @param string $folder Optional folder to override the default imap folder.
+     */
+    private function archiveToImap(Email $email, string $folder = ''): void
+    {
+        $settings = $this->imapSettings;
+        if (!empty($folder)) {
+            $settings['folder'] = $folder;
+        }
+
+        $host = $settings['host'];
+        $port = $settings['port'];
+        $username = $settings['username'];
+        $password = $settings['password'];
+        $folder = $settings['folder'];
+
+        $mailbox = sprintf('{%s:%d/imap/ssl}%s', $host, $port, $folder);
+
+        if ($connection = imap_open($mailbox, $username, $password)) {
+            imap_append($connection, $mailbox, $email->toString());
+            imap_close($connection);
+        }
+    }
+
+    /**
+     * Logs an error message.
+     *
+     * @param string $context The context of the error.
+     * @param \Exception $e The exception that occurred.
+     */
+   private function logError(string $context, \Exception $e): void
+    {
+        $this->errorInfo = $this->getErrorDetails($e);
+
+        // Logging nur wenn gewünscht (nach Einstellung)
+        $addon = rex_addon::get('symfony_mailer');
+        $logging = (int)$addon->getConfig('logging');
+
+        if ($logging === 1) { // nur Fehler loggen
+            $this->log('ERROR', new Email(), $e->getMessage());
+        } elseif ($logging === 2) { // alles loggen
+            $this->log('ERROR', new Email(), $context . ': ' . $e->getMessage() . ($this->debug ? "\n" . $e->getTraceAsString() : ''));
+        }
+    }
+
+    /**
+     * Get detailed error information from an exception.
+     *
+     * @param \Exception $e The exception to extract details from.
+     *
+     * @return array<string, mixed> An array containing the error details.
+     */
+    private function getErrorDetails(\Exception $e): array
+    {
+        $details = [
+            'message' => $e->getMessage(),
+            'transport' => $this->transportType
+        ];
+
+        if ($this->transportType === 'smtp') {
+            $details['dsn'] = $this->buildDsn();
+        }
+
+        if ($hint = $this->getErrorHint($e->getMessage())) {
+            $details['hint'] = $hint;
+        }
+
+        if ($this->debug) {
+            $details['file'] = $e->getFile();
+            $details['line'] = $e->getLine();
+            $details['trace'] = $e->getTraceAsString();
+        }
+
+        return $details;
+    }
+
+    /**
+     * Logs a message to the log file.
+     *
+     * @param string $status The status of the email (OK or ERROR).
+     * @param Email $email The email that was sent.
+     * @param string $error The error message (if any).
+     * @param string $body The body of the email
+     */
+    private function log(string $status, Email $email, string $error = '', string $body = ''): void
+    {
+        $addon = rex_addon::get('symfony_mailer');
+        $logging = (int)$addon->getConfig('logging');
+
+        if ($logging === 0) {
+            return;
+        }
+
+        // Bei Fehlern immer loggen wenn logging = 1 oder 2
+        // Bei Erfolg nur loggen wenn logging = 2
+        if ($logging === 1 && $status !== 'ERROR') {
+            return;
+        }
+
+        $fromAddresses = [];
+        foreach ($email->getFrom() as $address) {
+            $fromAddresses[] = $address->toString();
+        }
+
+        $toAddresses = [];
+        foreach ($email->getTo() as $address) {
+            $toAddresses[] = $address->toString();
+        }
+
+        $log = rex_log_file::factory(self::getLogFile());
+        $data = [
+            $status,
+            implode(', ', $fromAddresses),
+            implode(', ', $toAddresses),
+            $email->getSubject(),
+            $error,
+            $body
+        ];
+        $log->add($data);
+    }
+
+    /**
+     * Returns the error info.
+     *
+     * @return array<string,mixed> The error info.
+     */
+    public function getErrorInfo(): array
+    {
+        return $this->errorInfo;
+    }
+
+    /**
+     * Returns the path to the mail archive folder.
+     *
+     * @return string The path to the mail archive folder.
+     */
+    public static function getArchiveFolder(): string
+    {
+        return rex_path::addonData('symfony_mailer', 'mail_archive');
+    }
+
+    /**
+     * Returns the path to the log file.
+     *
+     * @return string The path to the log file.
+     */
+    public static function getLogFile(): string
+    {
+        return rex_path::log('symfony_mailer.log');
     }
 }
