@@ -225,7 +225,7 @@ class MicrosoftGraphTransport extends AbstractTransport
             
             // Schritt 2: Graph API Test-Aufruf
             $result['details']['step2'] = 'Testing Graph API connection...';
-            $endpoint = 'https://graph.microsoft.com/v1.0/me';
+            $endpoint = 'https://graph.microsoft.com/v1.0/users'; // Application Token geeignet
             
             $ch = curl_init($endpoint);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -251,11 +251,7 @@ class MicrosoftGraphTransport extends AbstractTransport
                 $result['success'] = true;
                 $result['message'] = 'Microsoft Graph connection successful';
                 $result['details']['step2'] = '✅ Graph API accessible';
-                $result['details']['user_info'] = [
-                    'displayName' => $userData['displayName'] ?? 'Unknown',
-                    'userPrincipalName' => $userData['userPrincipalName'] ?? 'Unknown',
-                    'id' => $userData['id'] ?? 'Unknown'
-                ];
+                $result['details']['users_count'] = isset($userData['value']) ? count($userData['value']) : 0;
             } else {
                 $errorData = json_decode($response, true);
                 $result['message'] = 'Graph API error (HTTP ' . $httpCode . ')';
@@ -337,16 +333,15 @@ class MicrosoftGraphTransport extends AbstractTransport
             return $result;
         }
         
-        $postData = [
-            'grant_type' => 'client_credentials',
-            'client_id' => $trimmedClientId,
-            'client_secret' => $trimmedClientSecret,
-            'scope' => 'https://graph.microsoft.com/.default'
-        ];
+        // Manuelles Bauen des POST-Strings wie im Produktivcode
+        $postString = 'client_id=' . urlencode($trimmedClientId) . 
+                     '&client_secret=' . urlencode($trimmedClientSecret) . 
+                     '&scope=' . urlencode('https://graph.microsoft.com/.default') . 
+                     '&grant_type=client_credentials';
 
         $ch = curl_init($endpoint);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postString);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
@@ -436,7 +431,7 @@ class MicrosoftGraphTransport extends AbstractTransport
         ];
 
         $accessToken = $tokenData['access_token'];
-        $graphEndpoint = 'https://graph.microsoft.com/v1.0/me';
+        $graphEndpoint = 'https://graph.microsoft.com/v1.0/users'; // Application Token geeignet
 
         $ch = curl_init($graphEndpoint);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -463,28 +458,27 @@ class MicrosoftGraphTransport extends AbstractTransport
             $userData = json_decode($response, true);
             $result['steps']['graph_api'] = [
                 'status' => 'passed',
-                'message' => '✅ Graph API accessible',
-                'user_info' => [
-                    'displayName' => $userData['displayName'] ?? 'N/A',
-                    'userPrincipalName' => $userData['userPrincipalName'] ?? 'N/A'
-                ]
+                'message' => '✅ Microsoft Graph API erreichbar und Token gültig',
+                'users_count' => isset($userData['value']) ? count($userData['value']) : 0
             ];
             $result['success'] = true;
-            $result['message'] = 'Microsoft Graph connection fully functional';
+            $result['message'] = 'Microsoft Graph Verbindung erfolgreich.';
+        } elseif ($httpCode === 403) {
+            // 403 ist für /users mit Mail.Send normal, wenn kein User.Read.All gesetzt ist
+            $result['steps']['graph_api'] = [
+                'status' => 'warning',
+                'message' => '⚠️ Microsoft Graph API erreichbar, aber keine User-Liste erlaubt. Mailversand ist trotzdem möglich.'
+            ];
+            $result['success'] = true;
+            $result['message'] = 'Microsoft Graph Verbindung erfolgreich (User-Liste nicht erlaubt, aber Mailversand möglich).';
         } else {
             $errorData = json_decode($response, true);
             $result['steps']['graph_api'] = [
                 'status' => 'failed',
                 'message' => "❌ Graph API error (HTTP $httpCode)",
-                'http_code' => $httpCode,
-                'response' => $errorData
+                'http_code' => $httpCode
             ];
-
-            if ($httpCode === 403) {
-                $result['message'] = 'Insufficient permissions - Admin consent required for Mail.Send';
-            } else {
-                $result['message'] = "Graph API access failed (HTTP $httpCode)";
-            }
+            $result['message'] = "Graph API access failed (HTTP $httpCode)";
         }
 
         return $result;

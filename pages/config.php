@@ -187,38 +187,71 @@ if (rex_post('test_mail', 'boolean')) {
     } else {
         try {
             $mailer = new RexSymfonyMailer();
-            
             $email = $mailer->createEmail();
             $email->to($addon->getConfig('test_address'));
             $email->subject($addon->i18n('test_mail_default_subject'));
-            
-            // Build test mail body with debug info
-            $body = $addon->i18n('test_mail_greeting') . "\r\n";
-            $body .= $addon->i18n('test_mail_body', rex::getServerName()) . "\r\n";
-            $body .= str_repeat('-', 50) . "\r\n";
-            $body .= 'Server: ' . rex::getServerName() . "\n";
-            $body .= 'Domain: ' . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-') . "\r\n";
-            $body .= 'Mailer: Symfony Mailer' . "\r\n";
-            $body .= 'Transport: ' . $addon->getConfig('transport_type', 'smtp') . "\r\n";
-            
+
+            // REDAXO Farben (angepasst)
+            $mainColor = '#324050'; // dunkel
+            $accentColor = '#4b9ad9'; // blau
+            $bgColor = '#f8fafc';
+            $borderColor = '#e0e7ef';
+            $headlineColor = $mainColor;
+            $infoColor = $accentColor;
+
+            // HTML-Body
+            $html = '<div style="background:' . $bgColor . ';border:1.5px solid ' . $borderColor . ';border-radius:8px;padding:32px 32px 24px 32px;font-family:sans-serif;max-width:600px;margin:0 auto;">';
+            $html .= '<div style="font-size:1.5em;font-weight:700;color:' . $mainColor . ';margin-bottom:12px;">REDAXO Symfony Mailer – Testmail</div>';
+            $html .= '<div style="color:' . $accentColor . ';font-size:1.15em;margin-bottom:18px;">Der Versand funktioniert! 🎉</div>';
+            $html .= '<div style="margin-bottom:18px;color:' . $headlineColor . ';">'
+                . 'Diese Testmail wurde erfolgreich über den REDAXO Symfony Mailer verschickt.'
+                . '</div>';
+            $html .= '<table style="width:100%;margin-bottom:18px;font-size:1em;color:' . $headlineColor . ';border-collapse:collapse;">';
+            $html .= '<tr><td style="padding:4px 0;width:160px;">Mailer:</td><td><strong>Symfony Mailer</strong></td></tr>';
+            $html .= '<tr><td style="padding:4px 0;">Transport:</td><td>' . rex_escape($addon->getConfig('transport_type', 'smtp')) . '</td></tr>';
+            $html .= '<tr><td style="padding:4px 0;">Absender:</td><td>' . rex_escape($addon->getConfig('from')) . '</td></tr>';
+            $html .= '<tr><td style="padding:4px 0;">Empfänger:</td><td>' . rex_escape($addon->getConfig('test_address')) . '</td></tr>';
+            $html .= '<tr><td style="padding:4px 0;">Server:</td><td>' . rex_escape(rex::getServerName()) . '</td></tr>';
+            $html .= '<tr><td style="padding:4px 0;">Domain:</td><td>' . rex_escape(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-') . '</td></tr>';
             if ($addon->getConfig('transport_type') === 'microsoft_graph') {
-                $body .= 'Graph Tenant: ' . $addon->getConfig('graph_tenant_id') . "\r\n";
-                $body .= 'Graph Client: ' . $addon->getConfig('graph_client_id') . "\r\n";
+                // Keine sensiblen Graph-Daten mehr anzeigen
             } else {
-                $body .= 'Host: ' . $addon->getConfig('host') . "\r\n";
-                $body .= 'Port: ' . $addon->getConfig('port') . "\r\n";
-                $body .= 'Security: ' . ($addon->getConfig('security') ?: 'none') . "\r\n";
+                $html .= '<tr><td style="padding:4px 0;">SMTP Host:</td><td>' . rex_escape($addon->getConfig('host')) . '</td></tr>';
+                $html .= '<tr><td style="padding:4px 0;">SMTP Port:</td><td>' . rex_escape($addon->getConfig('port')) . '</td></tr>';
+                $html .= '<tr><td style="padding:4px 0;">Verschlüsselung:</td><td>' . rex_escape($addon->getConfig('security') ?: 'none') . '</td></tr>';
             }
-            
+            $html .= '</table>';
+            $html .= '<div style="margin-top:32px;font-size:0.95em;color:#888;">REDAXO Symfony Mailer Addon – ' . date('d.m.Y H:i') . '</div>';
+            $html .= '</div>';
+
+            // Text-Body (Fallback, schlicht)
+            $body = "REDAXO Symfony Mailer – Testmail\n";
+            $body .= "==============================\n\n";
+            $body .= "Der Versand funktioniert!\n\n";
+            $body .= "Mailer: Symfony Mailer\n";
+            $body .= "Transport: " . $addon->getConfig('transport_type', 'smtp') . "\n";
+            $body .= "Absender: " . $addon->getConfig('from') . "\n";
+            $body .= "Empfänger: " . $addon->getConfig('test_address') . "\n";
+            $body .= "Server: " . rex::getServerName() . "\n";
+            $body .= "Domain: " . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-') . "\n";
+            if ($addon->getConfig('transport_type') === 'microsoft_graph') {
+                // Keine sensiblen Graph-Daten mehr anzeigen
+            } else {
+                $body .= "SMTP Host: " . $addon->getConfig('host') . "\n";
+                $body .= "SMTP Port: " . $addon->getConfig('port') . "\n";
+                $body .= "Verschlüsselung: " . ($addon->getConfig('security') ?: 'none') . "\n";
+            }
+            $body .= "\nREDAXO Symfony Mailer Addon – " . date('d.m.Y H:i') . "\n";
+
+            $email->html($html);
             $email->text($body);
-            
+
             if ($mailer->send($email)) {
                 outputTestResult($addon->i18n('test_mail_sent', rex_escape($addon->getConfig('test_address'))), true);
             } else {
                 $errorInfo = $mailer->getErrorInfo();
                 outputTestResult($addon->i18n('test_mail_error'), false, $errorInfo);
             }
-            
         } catch (\Exception $e) {
             outputTestResult($addon->i18n('test_mail_error') . '<br>' . $e->getMessage(), false);
         }
