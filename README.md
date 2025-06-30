@@ -204,7 +204,165 @@ if ($testResult['success']) {
 }
 ```
 
-### Beispiel 4: E-Mail mit SMTP-Fallback
+### Beispiel 4: Microsoft Graph Multipart E-Mails
+
+Microsoft Graph unterstützt vollständig multipart E-Mails. Hier sind praktische Beispiele:
+
+#### 4.1 Text + HTML (multipart/alternative)
+
+```php
+<?php
+use FriendsOfRedaxo\SymfonyMailer\RexSymfonyMailer;
+use Symfony\Component\Mime\Address;
+
+$mailer = new RexSymfonyMailer();
+$email = $mailer->createEmail();
+
+$email->to(new Address('empfaenger@example.com', 'Empfänger Name'))
+      ->subject('Multipart Newsletter via Graph')
+      ->text('Newsletter Ausgabe März 2025\n\nHallo!\n\nHier sind unsere Neuigkeiten...\n\nViele Grüße')
+      ->html('
+        <h1>Newsletter Ausgabe März 2025</h1>
+        <p>Hallo!</p>
+        <p>Hier sind unsere <strong>Neuigkeiten</strong>:</p>
+        <ul>
+            <li>Feature A wurde veröffentlicht</li>
+            <li>Bug Fix B ist verfügbar</li>
+        </ul>
+        <p>Viele Grüße<br>Das Team</p>
+      ');
+
+$graphSettings = [
+    'transport_type' => 'microsoft_graph',
+    'graph_tenant_id' => 'your-tenant-id',
+    'graph_client_id' => 'your-client-id',
+    'graph_client_secret' => 'your-client-secret',
+];
+
+// Graph erstellt automatisch multipart/alternative
+$mailer->send($email, $graphSettings);
+```
+
+#### 4.2 HTML + Inline-Bilder (multipart/related)
+
+```php
+<?php
+use Symfony\Component\Mime\Part\DataPart;
+
+$email->to(new Address('empfaenger@example.com'))
+      ->subject('Newsletter mit Logo via Graph')
+      ->text('Newsletter Text-Version - Logo kann nicht angezeigt werden')
+      ->html('
+        <div style="font-family: Arial;">
+            <img src="cid:company-logo" alt="Firmenlogo" style="width:200px;">
+            <h1>Wichtige Mitteilung</h1>
+            <p>Sehr geehrte Damen und Herren,</p>
+            <p>hiermit informieren wir Sie über...</p>
+            <img src="cid:chart-image" alt="Verkaufszahlen" style="width:400px;">
+        </div>
+      ')
+      ->addPart(new DataPart(file_get_contents('/path/to/logo.png'), 'image/png', 'company-logo'))
+      ->addPart(new DataPart(file_get_contents('/path/to/chart.jpg'), 'image/jpeg', 'chart-image'));
+
+// Graph verarbeitet multipart/related perfekt
+$mailer->send($email, $graphSettings);
+```
+
+#### 4.3 Komplexe Multipart mit Anhängen (multipart/mixed)
+
+```php
+<?php
+use Symfony\Component\Mime\Part\File;
+
+$email->to(new Address('kunde@example.com'))
+      ->cc(new Address('buchhaltung@example.com'))
+      ->subject('Rechnung #2025-001 via Graph')
+      ->text('Rechnung im Anhang\n\nSehr geehrte Damen und Herren,\nanbei erhalten Sie Ihre Rechnung.\n\nMit freundlichen Grüßen')
+      ->html('
+        <div style="font-family: Arial; color: #333;">
+            <img src="cid:letterhead" alt="Briefkopf" style="width:100%; max-width:600px;">
+            <h2>Rechnung #2025-001</h2>
+            <p>Sehr geehrte Damen und Herren,</p>
+            <p>anbei erhalten Sie Ihre Rechnung als PDF-Dokument.</p>
+            <table style="border-collapse: collapse; width: 100%;">
+                <tr style="background: #f5f5f5;">
+                    <th style="border: 1px solid #ddd; padding: 8px;">Position</th>
+                    <th style="border: 1px solid #ddd; padding: 8px;">Menge</th>
+                    <th style="border: 1px solid #ddd; padding: 8px;">Preis</th>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">REDAXO Lizenz</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">1</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">299,00 €</td>
+                </tr>
+            </table>
+            <p>Mit freundlichen Grüßen<br>Ihr Team</p>
+        </div>
+      ')
+      // Inline-Bild für Briefkopf
+      ->addPart(new DataPart(file_get_contents('/path/to/letterhead.png'), 'image/png', 'letterhead'))
+      // PDF-Anhang
+      ->addPart(new File('/path/to/rechnung-2025-001.pdf'))
+      // Excel-Anhang
+      ->addPart(new DataPart(
+          file_get_contents('/path/to/details.xlsx'), 
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 
+          'rechnung-details.xlsx'
+      ));
+
+// Graph verarbeitet multipart/mixed mit allen Ebenen
+$mailer->send($email, $graphSettings);
+
+/*
+Resultierende MIME-Struktur in Microsoft Graph:
+multipart/mixed
+├── multipart/related
+│   ├── multipart/alternative
+│   │   ├── text/plain (Text-Version)
+│   │   └── text/html (HTML-Version)
+│   └── image/png (Briefkopf inline)
+├── application/pdf (Rechnung)
+└── application/vnd.openxml... (Excel)
+*/
+```
+
+#### 4.4 Microsoft Graph API Multipart-Verarbeitung
+
+Unser Graph Transport konvertiert automatisch die Symfony Email-Struktur in das Graph-Format:
+
+```php
+// Symfony Email mit multipart wird zu Graph-JSON:
+$message = [
+    'message' => [
+        'subject' => 'Multipart Test',
+        'body' => [
+            'contentType' => 'HTML',  // Graph bevorzugt HTML wenn verfügbar
+            'content' => '<h1>HTML Content</h1>'
+        ],
+        // Text-Content wird in Graph als alternative Darstellung behandelt
+        'toRecipients' => [...],
+        'attachments' => [
+            [
+                '@odata.type' => '#microsoft.graph.fileAttachment',
+                'name' => 'document.pdf',
+                'contentType' => 'application/pdf',
+                'contentBytes' => 'base64EncodedContent...'
+            ],
+            // Inline-Bilder werden ebenfalls als Attachments behandelt
+            [
+                '@odata.type' => '#microsoft.graph.fileAttachment', 
+                'name' => 'inline-image',
+                'contentType' => 'image/png',
+                'contentBytes' => 'base64EncodedContent...',
+                'isInline' => true,  // Graph-spezifische Eigenschaft
+                'contentId' => 'inline-image'
+            ]
+        ]
+    ]
+];
+```
+
+### Beispiel 5: E-Mail mit SMTP-Fallback
 
 ```php
 <?php
