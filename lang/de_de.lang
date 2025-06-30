@@ -10,8 +10,14 @@ symfony_mailer_test_address = Testadresse
 symfony_mailer_test_address_notice = An diese Adresse werden Test-E-Mails versendet
 symfony_mailer_sender_name = Absendername
 
+# Transport Einstellungen
+symfony_mailer_transport_settings = Transport-Einstellungen
+symfony_mailer_transport_type = Transport-Typ
+symfony_mailer_transport_type_notice = Wählen Sie zwischen SMTP und Microsoft Graph für den E-Mail-Versand
+symfony_mailer_common_settings = Allgemeine Einstellungen
+
 # SMTP Einstellungen
-symfony_mailer_smtp_title = SMTP-Einstellungen
+symfony_mailer_smtp_settings = SMTP-Einstellungen
 symfony_mailer_smtp_host = Host
 symfony_mailer_smtp_port = Port
 symfony_mailer_smtp_port_notice = Übliche Ports: 25 (ohne Verschlüsselung), 465 (SSL), 587 (TLS)
@@ -25,11 +31,21 @@ symfony_mailer_smtp_debug = Erweiterte Fehlerausgabe
 symfony_mailer_smtp_debug_enabled = Erweiterte Fehlerausgabe aktivieren
 symfony_mailer_smtp_debug_notice = Bei aktivierter Option werden zusätzliche technische Details bei Fehlern angezeigt
 
+# Microsoft Graph Einstellungen
+symfony_mailer_graph_settings = Microsoft Graph-Einstellungen
+symfony_mailer_graph_tenant_id = Tenant ID
+symfony_mailer_graph_tenant_id_notice = Die Azure AD Tenant ID (Directory ID) aus dem Azure Portal
+symfony_mailer_graph_client_id = Client ID
+symfony_mailer_graph_client_id_notice = Die Application (Client) ID der registrierten App in Azure AD
+symfony_mailer_graph_client_secret = Client Secret
+symfony_mailer_graph_client_secret_notice = Das Client Secret der registrierten App in Azure AD
+
 # Test-Panel
 symfony_mailer_test_title = Verbindungstests
-symfony_mailer_test_info = Hier können Sie die SMTP- und IMAP-Verbindungen testen und eine Test-E-Mail versenden.
+symfony_mailer_test_info = Hier können Sie die Transport- und IMAP-Verbindungen testen und eine Test-E-Mail versenden.
+symfony_mailer_transport_test = Transport-Tests
 symfony_mailer_smtp_test = SMTP-Tests
-symfony_mailer_test_connection = SMTP-Verbindung testen
+symfony_mailer_test_connection = Verbindung testen
 symfony_mailer_test_mail_send = Test-E-Mail senden
 symfony_mailer_test_mail_no_addresses = Bitte Absender- und Testadresse konfigurieren
 symfony_mailer_test_mail_sent = Die Test-E-Mail wurde erfolgreich an {0} versendet
@@ -38,8 +54,8 @@ symfony_mailer_test_mail_default_subject = REDAXO Symfony Mailer Test
 symfony_mailer_test_mail_greeting = Hallo,
 symfony_mailer_test_mail_body = dies ist eine Test-E-Mail von der Website {0}.
 symfony_mailer_error_details = Fehlerdetails
-symfony_mailer_test_connection_success = SMTP-Verbindung erfolgreich hergestellt
-symfony_mailer_test_connection_error = SMTP-Verbindung fehlgeschlagen
+symfony_mailer_test_connection_success = Verbindung erfolgreich hergestellt
+symfony_mailer_test_connection_error = Verbindung fehlgeschlagen
 
 # IMAP
 symfony_mailer_imap_title = IMAP-Archiv
@@ -79,7 +95,6 @@ symfony_mailer_log_message = Nachricht
 symfony_mailer_log_delete_confirm = Möchten Sie die Logdatei wirklich löschen?
 symfony_mailer_log_delete = Logdatei löschen
 
-
 # SMTP-Fehler-Hilfe
 symfony_mailer_error_auth = Der Benutzername oder das Passwort ist falsch. Bitte überprüfen Sie die SMTP-Zugangsdaten.
 symfony_mailer_error_connection = Es konnte keine Verbindung zum SMTP-Server hergestellt werden. Bitte überprüfen Sie Host und Port sowie Ihre Internetverbindung.
@@ -87,6 +102,12 @@ symfony_mailer_error_ssl = Es gab einen Fehler mit der SSL/TLS-Verschlüsselung.
 symfony_mailer_error_relay = Der SMTP-Server verweigert die Weiterleitung. Möglicherweise müssen Sie sich authentifizieren oder die IP-Adresse ist nicht freigegeben.
 symfony_mailer_error_sender = Die Absenderadresse wurde vom Server abgelehnt. Überprüfen Sie die Absenderadresse oder ob Sie berechtigt sind, unter dieser Adresse zu versenden.
 symfony_mailer_error_starttls = Es gab einen Fehler beim Aufbau der verschlüsselten Verbindung. Möglicherweise unterstützt der Server kein STARTTLS oder die Verschlüsselungseinstellung ist falsch.
+
+# Microsoft Graph-Fehler-Hilfe
+symfony_mailer_error_graph_auth = Die Microsoft Graph Authentifizierung ist fehlgeschlagen. Bitte überprüfen Sie Tenant ID, Client ID und Client Secret.
+symfony_mailer_error_graph_connection = Es konnte keine Verbindung zur Microsoft Graph API hergestellt werden. Bitte überprüfen Sie Ihre Internetverbindung und die Azure AD Konfiguration.
+symfony_mailer_error_graph_permissions = Unzureichende Berechtigungen für Microsoft Graph. Stellen Sie sicher, dass die App-Registrierung die erforderlichen Mail.Send Berechtigungen hat.
+
 symfony_mailer_debug_info = Debug-Informationen:
 
 # Custom Config
@@ -96,5 +117,3 @@ config_external = Die Einstellungen für diesen AddOn werden über die custom_co
 symfony_mailer_detour_mode = Detour
 symfony_mailer_detour_mode_enabled = Aktiv / Inaktiv
 symfony_mailer_detour_mode_notice = Wenn aktiviert, werden alle ausgehenden E-Mails an die in der <code>custom_config.yml</code> konfigurierte oder die Standard-Testadresse umgeleitet.
-
-
