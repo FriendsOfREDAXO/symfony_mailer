@@ -75,6 +75,48 @@ Wählen Sie zwischen zwei Transport-Methoden:
 *   **IMAP-Passwort:** Das Passwort für die IMAP-Verbindung.
 *   **IMAP-Ordner:** Der Ordner, in dem die E-Mails gespeichert werden sollen (z.B. "Sent").
 
+### Mailjet Einstellungen
+
+*   **Transport-Typ:** `mailjet`
+*   **Host:** `in-v3.mailjet.com`
+*   **Port:** 587
+*   **Benutzername:** Dein Mailjet API Key
+*   **Passwort:** Dein Mailjet Secret Key
+*   **Sicherheit:** `tls`
+
+Beispiel:
+
+```yaml
+transport_type: 'mailjet'
+host: 'in-v3.mailjet.com'
+port: 587
+username: 'your-mailjet-api-key'
+password: 'your-mailjet-secret-key'
+security: 'tls'
+```
+
+### Mailchimp Einstellungen
+
+*   **Transport-Typ:** `mailchimp`
+*   **Host:** `smtp.mailchimp.com`
+*   **Port:** 587
+*   **Benutzername:** beliebig (z.B. `apikey`)
+*   **Passwort:** Dein Mailchimp API Key
+*   **Sicherheit:** `tls`
+
+Beispiel:
+
+```yaml
+transport_type: 'mailchimp'
+host: 'smtp.mailchimp.com'
+port: 587
+username: 'apikey'
+password: 'your-mailchimp-api-key'
+security: 'tls'
+```
+
+> **Hinweis:** Mailjet und Mailchimp werden wie SMTP angesprochen, benötigen aber die jeweiligen API-Zugangsdaten. Die Auswahl erfolgt über den Transport-Typ. Es gibt keine eigenen Backend-Seiten, die Einstellungen werden wie bei SMTP gepflegt.
+
 ## Microsoft Graph Setup
 
 ### Voraussetzungen
@@ -479,6 +521,54 @@ security: "tls"
 auth: true
 username: "your-smtp-username"
 password: "your-smtp-password"
+
+# Allgemeine Einstellungen
+charset: "utf-8"
+archive: true
+imap_archive: false
+debug: true
+logging: 2
+detour_mode: false
+```
+
+### Mailjet Beispiel
+
+```yaml
+# Mailjet Transport
+transport_type: 'mailjet'
+from: "noreply@yourcompany.com"
+name: "Your Company"
+
+# Mailjet Einstellungen
+host: "in-v3.mailjet.com"
+port: 587
+username: "your-mailjet-api-key"
+password: "your-mailjet-secret-key"
+security: "tls"
+
+# Allgemeine Einstellungen
+charset: "utf-8"
+archive: true
+imap_archive: false
+debug: true
+logging: 2
+detour_mode: false
+```
+
+### Mailchimp Beispiel
+
+```yaml
+# Mailchimp Transport
+transport_type: 'mailchimp'
+from: "noreply@yourcompany.com"
+name: "Your Company"
+
+# Mailchimp Einstellungen
+host: "smtp.mailchimp.com"
+port: 587
+username: "apikey"
+password: "your-mailchimp-api-key"
+security: "tls"
 
 # Allgemeine Einstellungen
 charset: "utf-8"
