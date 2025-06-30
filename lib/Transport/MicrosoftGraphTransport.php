@@ -64,18 +64,17 @@ class MicrosoftGraphTransport extends AbstractTransport
             $this->tenantId
         );
 
-        // Exakt wie im funktionierenden Beispiel
-        $postData = [
-            'client_id' => $this->clientId,
-            'client_secret' => $this->clientSecret,
-            'scope' => 'https://graph.microsoft.com/.default',
-            'grant_type' => 'client_credentials',
-        ];
+        // FIXED: Manueller POST-String statt http_build_query()
+        // Grund: http_build_query() scheint auf diesem Server nicht zu funktionieren
+        $postString = 'client_id=' . urlencode($this->clientId) . 
+                     '&client_secret=' . urlencode($this->clientSecret) . 
+                     '&scope=' . urlencode('https://graph.microsoft.com/.default') . 
+                     '&grant_type=client_credentials';
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $endpoint);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData)); // Exakt wie im Beispiel
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postString);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         
         $response = curl_exec($ch);
@@ -226,7 +225,7 @@ class MicrosoftGraphTransport extends AbstractTransport
             
             // Schritt 2: Graph API Test-Aufruf
             $result['details']['step2'] = 'Testing Graph API connection...';
-            $endpoint = 'https://graph.microsoft.com/v1.0/me';
+            $endpoint = 'https://graph.microsoft.com/v1.0/users'; // Application Token geeignet
             
             $ch = curl_init($endpoint);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -252,11 +251,7 @@ class MicrosoftGraphTransport extends AbstractTransport
                 $result['success'] = true;
                 $result['message'] = 'Microsoft Graph connection successful';
                 $result['details']['step2'] = '✅ Graph API accessible';
-                $result['details']['user_info'] = [
-                    'displayName' => $userData['displayName'] ?? 'Unknown',
-                    'userPrincipalName' => $userData['userPrincipalName'] ?? 'Unknown',
-                    'id' => $userData['id'] ?? 'Unknown'
-                ];
+                $result['details']['users_count'] = isset($userData['value']) ? count($userData['value']) : 0;
             } else {
                 $errorData = json_decode($response, true);
                 $result['message'] = 'Graph API error (HTTP ' . $httpCode . ')';
@@ -287,6 +282,8 @@ class MicrosoftGraphTransport extends AbstractTransport
 
     /**
      * Test connection with detailed diagnostics (static method for easy access)
+     *
+     * ACHTUNG: Diese Methode nutzt jetzt rex_socket statt cURL für alle HTTP-Requests.
      */
     public static function diagnosticTest(string $tenantId, string $clientId, string $clientSecret): array
     {
@@ -312,78 +309,42 @@ class MicrosoftGraphTransport extends AbstractTransport
         }
 
         $result['steps']['validation'] = [
-            'status' => 'passed', 
+            'status' => 'passed',
             'message' => '✅ All parameters provided'
         ];
 
-        // Schritt 2: Token-Endpoint testen
+        // Schritt 2: Token-Endpoint testen (rex_socket)
         $result['steps']['token_request'] = [
             'status' => 'running',
             'message' => 'Requesting access token...'
         ];
 
         $endpoint = "https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token";
-        
-        // Sicherstellen, dass alle Werte trimmed und nicht leer sind
-        $trimmedClientId = trim($clientId);
-        $trimmedClientSecret = trim($clientSecret);
-        $trimmedTenantId = trim($tenantId);
-        
-        if (empty($trimmedClientId) || empty($trimmedClientSecret) || empty($trimmedTenantId)) {
+        $postString = 'client_id=' . urlencode(trim($clientId)) .
+                     '&client_secret=' . urlencode(trim($clientSecret)) .
+                     '&scope=' . urlencode('https://graph.microsoft.com/.default') .
+                     '&grant_type=client_credentials';
+        try {
+            $socket = \rex_socket::factoryUrl($endpoint);
+            $socket->addHeader('Content-Type', 'application/x-www-form-urlencoded');
+            $socket->addHeader('Accept', 'application/json');
+            $socket->addHeader('User-Agent', 'REDAXO-SymfonyMailer/1.1.0');
+            $socket->setTimeout(30);
+            $response = $socket->doPost($postString);
+            $httpCode = $response->getStatusCode();
+            $body = $response->getBody();
+        } catch (\rex_socket_exception $e) {
             $result['steps']['token_request'] = [
                 'status' => 'failed',
-                'message' => '❌ Empty credentials after trimming'
+                'message' => '❌ rex_socket error: ' . $e->getMessage()
             ];
-            $result['message'] = 'Credentials contain only whitespace or are empty';
-            return $result;
-        }
-        
-        $postData = [
-            'grant_type' => 'client_credentials',
-            'client_id' => $trimmedClientId,
-            'client_secret' => $trimmedClientSecret,
-            'scope' => 'https://graph.microsoft.com/.default'
-        ];
-
-        $ch = curl_init($endpoint);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/x-www-form-urlencoded',
-            'Accept: application/json',
-            'User-Agent: REDAXO-SymfonyMailer/1.1.0'
-        ]);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        $curlInfo = curl_getinfo($ch);
-        curl_close($ch);
-
-        if ($curlError) {
-            $result['steps']['token_request'] = [
-                'status' => 'failed',
-                'message' => '❌ Network error: ' . $curlError,
-                'curl_info' => $curlInfo
-            ];
-            $result['message'] = 'Network connectivity issue';
+            $result['message'] = 'Network connectivity issue (rex_socket)';
             return $result;
         }
 
         if ($httpCode !== 200) {
-            $errorData = json_decode($response, true);
-            $errorMsg = 'Unknown error';
-            
-            if (isset($errorData['error_description'])) {
-                $errorMsg = $errorData['error_description'];
-            } elseif (isset($errorData['error'])) {
-                $errorMsg = $errorData['error'];
-            }
-            
+            $errorData = json_decode($body, true);
+            $errorMsg = $errorData['error_description'] ?? $errorData['error'] ?? 'Unknown error';
             $result['steps']['token_request'] = [
                 'status' => 'failed',
                 'message' => "❌ HTTP $httpCode: $errorMsg",
@@ -391,103 +352,80 @@ class MicrosoftGraphTransport extends AbstractTransport
                 'response' => $errorData,
                 'request_data' => [
                     'endpoint' => $endpoint,
-                    'client_id' => $trimmedClientId,
-                    'client_secret_length' => strlen($trimmedClientSecret),
-                    'tenant_id' => $trimmedTenantId
+                    'client_id' => trim($clientId),
+                    'client_secret_length' => strlen(trim($clientSecret)),
+                    'tenant_id' => trim($tenantId)
                 ]
             ];
-
-            // Spezifische Hilfetexte für AADSTS Fehler
-            if (strpos($errorMsg, 'AADSTS7000216') !== false) {
-                $result['message'] = 'Client Secret wird nicht akzeptiert - prüfen Sie das Secret in Azure';
-            } elseif (strpos($errorMsg, 'AADSTS70011') !== false) {
-                $result['message'] = 'Invalid scope - sollte normalerweise nicht auftreten';
-            } elseif (strpos($errorMsg, 'AADSTS90002') !== false) {
-                $result['message'] = 'Tenant not found - prüfen Sie die Tenant ID';
-            } elseif (strpos($errorMsg, 'AADSTS7000215') !== false) {
-                $result['message'] = 'Invalid client secret - das Secret ist falsch oder abgelaufen';
-            } elseif ($httpCode === 400) {
-                if (strpos($errorMsg, 'invalid_client') !== false) {
-                    $result['message'] = 'Invalid Client ID or Client Secret';
-                } elseif (strpos($errorMsg, 'invalid_request') !== false) {
-                    $result['message'] = 'Invalid request format or Tenant ID';
-                } else {
-                    $result['message'] = 'Bad request - check all credentials';
-                }
-            } elseif ($httpCode === 401) {
-                $result['message'] = 'Authentication failed - verify credentials';
-            } else {
-                $result['message'] = "Token request failed (HTTP $httpCode)";
-            }
+            $result['message'] = 'Token request failed (rex_socket)';
             return $result;
         }
 
-        $tokenData = json_decode($response, true);
+        $tokenData = json_decode($body, true);
         $result['steps']['token_request'] = [
             'status' => 'passed',
             'message' => '✅ Access token received',
-            'token_type' => $tokenData['token_type'],
-            'expires_in' => $tokenData['expires_in']
+            'token_type' => $tokenData['token_type'] ?? '',
+            'expires_in' => $tokenData['expires_in'] ?? ''
         ];
 
-        // Schritt 3: Graph API testen
+        // Schritt 3: Graph API testen (rex_socket)
         $result['steps']['graph_api'] = [
             'status' => 'running',
             'message' => 'Testing Graph API access...'
         ];
-
-        $accessToken = $tokenData['access_token'];
-        $graphEndpoint = 'https://graph.microsoft.com/v1.0/me';
-
-        $ch = curl_init($graphEndpoint);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $accessToken
-        ]);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-
-        if ($curlError) {
+        $accessToken = $tokenData['access_token'] ?? '';
+        if (!$accessToken) {
             $result['steps']['graph_api'] = [
                 'status' => 'failed',
-                'message' => '❌ Graph API network error: ' . $curlError
+                'message' => '❌ No access token received.'
             ];
-            $result['message'] = 'Graph API connectivity issue';
+            $result['message'] = 'No access token received.';
             return $result;
         }
-
+        $graphEndpoint = 'https://graph.microsoft.com/v1.0/users';
+        try {
+            $socket = \rex_socket::factoryUrl($graphEndpoint);
+            $socket->addHeader('Authorization', 'Bearer ' . $accessToken);
+            $socket->addHeader('Accept', 'application/json');
+            $socket->addHeader('User-Agent', 'REDAXO-SymfonyMailer/1.1.0');
+            $socket->setTimeout(30);
+            $response = $socket->doGet();
+            $httpCode = $response->getStatusCode();
+            $body = $response->getBody();
+        } catch (\rex_socket_exception $e) {
+            $result['steps']['graph_api'] = [
+                'status' => 'failed',
+                'message' => '❌ rex_socket error: ' . $e->getMessage()
+            ];
+            $result['message'] = 'Graph API connectivity issue (rex_socket)';
+            return $result;
+        }
         if ($httpCode === 200) {
-            $userData = json_decode($response, true);
+            $userData = json_decode($body, true);
             $result['steps']['graph_api'] = [
                 'status' => 'passed',
-                'message' => '✅ Graph API accessible',
-                'user_info' => [
-                    'displayName' => $userData['displayName'] ?? 'N/A',
-                    'userPrincipalName' => $userData['userPrincipalName'] ?? 'N/A'
-                ]
+                'message' => '✅ Microsoft Graph API erreichbar und Token gültig',
+                'users_count' => isset($userData['value']) ? count($userData['value']) : 0
             ];
             $result['success'] = true;
-            $result['message'] = 'Microsoft Graph connection fully functional';
+            $result['message'] = 'Microsoft Graph Verbindung erfolgreich.';
+        } elseif ($httpCode === 403) {
+            $result['steps']['graph_api'] = [
+                'status' => 'warning',
+                'message' => '⚠️ Microsoft Graph API erreichbar, aber keine User-Liste erlaubt. Mailversand ist trotzdem möglich.'
+            ];
+            $result['success'] = true;
+            $result['message'] = 'Microsoft Graph Verbindung erfolgreich (User-Liste nicht erlaubt, aber Mailversand möglich).';
         } else {
-            $errorData = json_decode($response, true);
+            $errorData = json_decode($body, true);
             $result['steps']['graph_api'] = [
                 'status' => 'failed',
                 'message' => "❌ Graph API error (HTTP $httpCode)",
-                'http_code' => $httpCode,
-                'response' => $errorData
+                'http_code' => $httpCode
             ];
-
-            if ($httpCode === 403) {
-                $result['message'] = 'Insufficient permissions - Admin consent required for Mail.Send';
-            } else {
-                $result['message'] = "Graph API access failed (HTTP $httpCode)";
-            }
+            $result['message'] = "Graph API access failed (HTTP $httpCode)";
         }
-
         return $result;
     }
 

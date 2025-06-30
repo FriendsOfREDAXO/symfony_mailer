@@ -15,17 +15,65 @@ function outputTestResult($message, $success = true, $error = null)
     } else {
         $output = '';
         
-        // Wenn ein Hinweis vorhanden ist, zeigen wir diesen zuerst
-        if (isset($error['hint'])) {
-            $output .= rex_escape($error['hint']);
+        // Microsoft Graph spezifische Diagnose-Ausgabe
+        if (isset($error['steps'])) {
+            $output .= '<div class="panel panel-default">
+                <div class="panel-heading"><strong>Microsoft Graph Diagnose</strong></div>
+                <div class="panel-body">';
+            
+            foreach ($error['steps'] as $stepName => $stepInfo) {
+                $status = $stepInfo['status'];
+                $statusIcon = match($status) {
+                    'passed' => '✅',
+                    'failed' => '❌', 
+                    'running' => '⏳',
+                    default => '❔'
+                };
+                
+                $output .= '<div style="margin-bottom: 10px;">
+                    <strong>' . ucfirst(str_replace('_', ' ', $stepName)) . ':</strong> 
+                    ' . $statusIcon . ' ' . rex_escape($stepInfo['message']) . '</div>';
+                
+                // Zusätzliche Details anzeigen
+                if (isset($stepInfo['user_info'])) {
+                    $output .= '<div style="margin-left: 20px; color: #666;">
+                        User: ' . rex_escape($stepInfo['user_info']['displayName'] ?? 'N/A') . ' 
+                        (' . rex_escape($stepInfo['user_info']['userPrincipalName'] ?? 'N/A') . ')
+                    </div>';
+                }
+                
+                if (isset($stepInfo['request_data'])) {
+                    $output .= '<div style="margin-left: 20px; color: #666; font-family: monospace;">
+                        <details>
+                            <summary>Request Details (Debug)</summary>
+                            <div style="background: #f5f5f5; padding: 10px; margin: 5px 0;">
+                                <strong>Endpoint:</strong> ' . rex_escape($stepInfo['request_data']['endpoint']) . '<br>
+                                <strong>Client ID:</strong> ' . rex_escape($stepInfo['request_data']['client_id']) . '<br>
+                                <strong>Client Secret Length:</strong> ' . $stepInfo['request_data']['client_secret_length'] . ' chars<br>
+                                <strong>Tenant ID:</strong> ' . rex_escape($stepInfo['request_data']['tenant_id']) . '
+                            </div>
+                        </details>
+                    </div>';
+                }
+            }
+            
+            $output .= '</div></div>';
         }
         
-        // Wenn Debug aktiviert ist und es weitere Details gibt, zeigen wir diese an
-        if (isset($error['message']) && rex_addon::get('symfony_mailer')->getConfig('debug')) {
+        // Wenn ein Hinweis vorhanden ist, zeigen wir diesen
+        if (isset($error['hint'])) {
+            $output .= '<div class="alert alert-info"><strong>Lösungshinweis:</strong><br>' . rex_escape($error['hint']) . '</div>';
+        }
+        
+        // Debug-Informationen für SMTP oder wenn Debug aktiviert ist
+        if (isset($error['message']) && (rex_addon::get('symfony_mailer')->getConfig('debug') || !isset($error['steps']))) {
             $output .= '<br><br><strong>' . rex_i18n::msg('symfony_mailer_debug_info') . ':</strong><br>';
             $output .= '<pre class="rex-debug">' . rex_escape($error['message']);
             if (isset($error['dsn'])) {
                 $output .= "\n\nDSN: " . rex_escape($error['dsn']);
+            }
+            if (isset($error['transport'])) {
+                $output .= "\n\nTransport: " . rex_escape($error['transport']);
             }
             $output .= '</pre>';
         }
@@ -37,7 +85,7 @@ function outputTestResult($message, $success = true, $error = null)
 // Handle test connection
 if (rex_post('test_connection', 'boolean')) {
     try {
-        $mailer = new RexSymfonyMailer();
+        $mailer = new \FriendsOfRedaxo\SymfonyMailer\RexSymfonyMailer();
         $result = $mailer->testConnection();
         
         outputTestResult($result['message'], $result['success'], $result['error_details'] ?? null);
@@ -132,7 +180,6 @@ if (rex_post('test_imap', 'boolean')) {
     }
 }
 
-
 // Handle test mail
 if (rex_post('test_mail', 'boolean')) {
     if ('' == $addon->getConfig('from') || '' == $addon->getConfig('test_address')) {
@@ -140,37 +187,76 @@ if (rex_post('test_mail', 'boolean')) {
     } else {
         try {
             $mailer = new RexSymfonyMailer();
-            
             $email = $mailer->createEmail();
             $email->to($addon->getConfig('test_address'));
             $email->subject($addon->i18n('test_mail_default_subject'));
-            
-            // Build test mail body with debug info
-            $body = $addon->i18n('test_mail_greeting') . "\r\n";
-            $body .= $addon->i18n('test_mail_body', rex::getServerName()) . "\r\n";
-            $body .= str_repeat('-', 50) . "\r\n";
-            $body .= 'Server: ' . rex::getServerName() . "\n";
-            $body .= 'Domain: ' . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-') . "\r\n";
-            $body .= 'Mailer: Symfony Mailer' . "\r\n";
-            $body .= 'Host: ' . $addon->getConfig('host') . "\r\n";
-            $body .= 'Port: ' . $addon->getConfig('port') . "\r\n";
-            $body .= 'Security: ' . ($addon->getConfig('security') ?: 'none') . "\r\n";
-            
+
+            // REDAXO Farben (angepasst)
+            $mainColor = '#324050'; // dunkel
+            $accentColor = '#4b9ad9'; // blau
+            $bgColor = '#f8fafc';
+            $borderColor = '#e0e7ef';
+            $headlineColor = $mainColor;
+            $infoColor = $accentColor;
+
+            // HTML-Body
+            $html = '<div style="background:' . $bgColor . ';border:1.5px solid ' . $borderColor . ';border-radius:8px;padding:32px 32px 24px 32px;font-family:sans-serif;max-width:600px;margin:0 auto;">';
+            $html .= '<div style="font-size:1.5em;font-weight:700;color:' . $mainColor . ';margin-bottom:12px;">REDAXO Symfony Mailer – Testmail</div>';
+            $html .= '<div style="color:' . $accentColor . ';font-size:1.15em;margin-bottom:18px;">Der Versand funktioniert! 🎉</div>';
+            $html .= '<div style="margin-bottom:18px;color:' . $headlineColor . ';">'
+                . 'Diese Testmail wurde erfolgreich über den REDAXO Symfony Mailer verschickt.'
+                . '</div>';
+            $html .= '<table style="width:100%;margin-bottom:18px;font-size:1em;color:' . $headlineColor . ';border-collapse:collapse;">';
+            $html .= '<tr><td style="padding:4px 0;width:160px;">Mailer:</td><td><strong>Symfony Mailer</strong></td></tr>';
+            $html .= '<tr><td style="padding:4px 0;">Transport:</td><td>' . rex_escape($addon->getConfig('transport_type', 'smtp')) . '</td></tr>';
+            $html .= '<tr><td style="padding:4px 0;">Absender:</td><td>' . rex_escape($addon->getConfig('from')) . '</td></tr>';
+            $html .= '<tr><td style="padding:4px 0;">Empfänger:</td><td>' . rex_escape($addon->getConfig('test_address')) . '</td></tr>';
+            $html .= '<tr><td style="padding:4px 0;">Server:</td><td>' . rex_escape(rex::getServerName()) . '</td></tr>';
+            $html .= '<tr><td style="padding:4px 0;">Domain:</td><td>' . rex_escape(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-') . '</td></tr>';
+            if ($addon->getConfig('transport_type') === 'microsoft_graph') {
+                // Keine sensiblen Graph-Daten mehr anzeigen
+            } else {
+                $html .= '<tr><td style="padding:4px 0;">SMTP Host:</td><td>' . rex_escape($addon->getConfig('host')) . '</td></tr>';
+                $html .= '<tr><td style="padding:4px 0;">SMTP Port:</td><td>' . rex_escape($addon->getConfig('port')) . '</td></tr>';
+                $html .= '<tr><td style="padding:4px 0;">Verschlüsselung:</td><td>' . rex_escape($addon->getConfig('security') ?: 'none') . '</td></tr>';
+            }
+            $html .= '</table>';
+            $html .= '<div style="margin-top:32px;font-size:0.95em;color:#888;">REDAXO Symfony Mailer Addon – ' . date('d.m.Y H:i') . '</div>';
+            $html .= '</div>';
+
+            // Text-Body (Fallback, schlicht)
+            $body = "REDAXO Symfony Mailer – Testmail\n";
+            $body .= "==============================\n\n";
+            $body .= "Der Versand funktioniert!\n\n";
+            $body .= "Mailer: Symfony Mailer\n";
+            $body .= "Transport: " . $addon->getConfig('transport_type', 'smtp') . "\n";
+            $body .= "Absender: " . $addon->getConfig('from') . "\n";
+            $body .= "Empfänger: " . $addon->getConfig('test_address') . "\n";
+            $body .= "Server: " . rex::getServerName() . "\n";
+            $body .= "Domain: " . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-') . "\n";
+            if ($addon->getConfig('transport_type') === 'microsoft_graph') {
+                // Keine sensiblen Graph-Daten mehr anzeigen
+            } else {
+                $body .= "SMTP Host: " . $addon->getConfig('host') . "\n";
+                $body .= "SMTP Port: " . $addon->getConfig('port') . "\n";
+                $body .= "Verschlüsselung: " . ($addon->getConfig('security') ?: 'none') . "\n";
+            }
+            $body .= "\nREDAXO Symfony Mailer Addon – " . date('d.m.Y H:i') . "\n";
+
+            $email->html($html);
             $email->text($body);
-            
+
             if ($mailer->send($email)) {
                 outputTestResult($addon->i18n('test_mail_sent', rex_escape($addon->getConfig('test_address'))), true);
             } else {
                 $errorInfo = $mailer->getErrorInfo();
                 outputTestResult($addon->i18n('test_mail_error'), false, $errorInfo);
             }
-            
         } catch (\Exception $e) {
             outputTestResult($addon->i18n('test_mail_error') . '<br>' . $e->getMessage(), false);
         }
     }
 }
-
 
 // Setup config form
 $form = rex_config_form::factory('symfony_mailer');
@@ -179,8 +265,22 @@ $form = rex_config_form::factory('symfony_mailer');
 if ($externalConfig) {
     echo rex_view::warning($addon->i18n('config_external'));
 }
-// SMTP Settings Fieldset
-$form->addFieldset('SMTP Settings');
+
+// Transport Type Selection
+$form->addFieldset($addon->i18n('transport_settings'));
+
+$field = $form->addSelectField('transport_type');
+$field->setLabel($addon->i18n('transport_type'));
+$select = $field->getSelect();
+$select->addOption('SMTP', 'smtp');
+$select->addOption('Microsoft Graph', 'microsoft_graph');
+$field->setNotice($addon->i18n('transport_type_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
+// Common Settings Fieldset
+$form->addFieldset($addon->i18n('common_settings'));
 
 $field = $form->addTextField('from');
 $field->setLabel($addon->i18n('sender_email'));
@@ -201,6 +301,9 @@ $field->setLabel($addon->i18n('sender_name'));
 if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
+
+// SMTP Settings Fieldset
+$form->addFieldset($addon->i18n('smtp_settings'));
 
 $field = $form->addTextField('host');
 $field->setLabel($addon->i18n('smtp_host'));
@@ -245,6 +348,31 @@ if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
 
+// Microsoft Graph Settings Fieldset
+$form->addFieldset($addon->i18n('graph_settings'));
+
+$field = $form->addTextField('graph_tenant_id');
+$field->setLabel($addon->i18n('graph_tenant_id'));
+$field->setNotice($addon->i18n('graph_tenant_id_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
+$field = $form->addTextField('graph_client_id');
+$field->setLabel($addon->i18n('graph_client_id'));
+$field->setNotice($addon->i18n('graph_client_id_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
+$field = $form->addTextField('graph_client_secret');
+$field->setLabel($addon->i18n('graph_client_secret'));
+$field->setAttribute('type', 'password');
+$field->setNotice($addon->i18n('graph_client_secret_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 $field = $form->addCheckboxField('debug');
 $field->setLabel($addon->i18n('smtp_debug'));
 $field->addOption($addon->i18n('smtp_debug_enabled'), 1);
@@ -266,7 +394,6 @@ $field->addOption($addon->i18n('archive_enabled'), 1);
 if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
-
 
 // IMAP Archive Settings Fieldset
 $imap_available = extension_loaded('imap');
@@ -322,7 +449,6 @@ $field->setLabel($addon->i18n('detour_mode'));
 $field->addOption($addon->i18n('detour_mode_enabled'), 1);
 $field->setNotice($addon->i18n('detour_mode_notice'));
 
-
 // Output form
 echo '<section class="rex-page-section">
     <div class="panel panel-edit">
@@ -344,7 +470,7 @@ echo '</div>
                                 </div>
                                 
                                 <fieldset>
-                                    <legend>' . $addon->i18n('smtp_test') . '</legend>
+                                    <legend>' . $addon->i18n('transport_test') . '</legend>
                                     <div class="form-group">
                                         <button type="submit" name="test_connection" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_connection') . '</button>
                                     </div>
@@ -373,3 +499,31 @@ echo '
         </div>
     </div>
 </section>';
+
+// Add JavaScript for dynamic form visibility
+echo '<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const transportSelect = document.querySelector("select[name=\'transport_type\']");
+    const smtpFieldset = document.querySelector("fieldset:has(input[name=\'host\'])");
+    const graphFieldset = document.querySelector("fieldset:has(input[name=\'graph_tenant_id\'])");
+    
+    function toggleTransportFields() {
+        if (!transportSelect || !smtpFieldset || !graphFieldset) return;
+        
+        const selectedTransport = transportSelect.value;
+        
+        if (selectedTransport === "microsoft_graph") {
+            smtpFieldset.style.display = "none";
+            graphFieldset.style.display = "block";
+        } else {
+            smtpFieldset.style.display = "block";
+            graphFieldset.style.display = "none";
+        }
+    }
+    
+    if (transportSelect) {
+        transportSelect.addEventListener("change", toggleTransportFields);
+        toggleTransportFields(); // Initial call
+    }
+});
+</script>';
