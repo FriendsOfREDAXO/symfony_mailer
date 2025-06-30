@@ -42,8 +42,18 @@ function outputTestResult($message, $success = true, $error = null)
                     </div>';
                 }
                 
-                if (isset($stepInfo['http_code'])) {
-                    $output .= '<div style="margin-left: 20px; color: #666;">HTTP Code: ' . $stepInfo['http_code'] . '</div>';
+                if (isset($stepInfo['request_data'])) {
+                    $output .= '<div style="margin-left: 20px; color: #666; font-family: monospace;">
+                        <details>
+                            <summary>Request Details (Debug)</summary>
+                            <div style="background: #f5f5f5; padding: 10px; margin: 5px 0;">
+                                <strong>Endpoint:</strong> ' . rex_escape($stepInfo['request_data']['endpoint']) . '<br>
+                                <strong>Client ID:</strong> ' . rex_escape($stepInfo['request_data']['client_id']) . '<br>
+                                <strong>Client Secret Length:</strong> ' . $stepInfo['request_data']['client_secret_length'] . ' chars<br>
+                                <strong>Tenant ID:</strong> ' . rex_escape($stepInfo['request_data']['tenant_id']) . '
+                            </div>
+                        </details>
+                    </div>';
                 }
             }
             
