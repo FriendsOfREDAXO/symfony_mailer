@@ -679,4 +679,3 @@ rex_extension::register('SYMFONY_MAILER_PRE_SEND', function (rex_extension_point
 
 **Microsoft Graph Integration**
 
-Enhanced with Microsoft Graph API support for modern cloud-based email delivery.
