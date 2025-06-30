@@ -27,6 +27,9 @@ function outputTestResult($message, $success = true, $error = null)
             if (isset($error['dsn'])) {
                 $output .= "\n\nDSN: " . rex_escape($error['dsn']);
             }
+            if (isset($error['transport'])) {
+                $output .= "\n\nTransport: " . rex_escape($error['transport']);
+            }
             $output .= '</pre>';
         }
         
@@ -132,7 +135,6 @@ if (rex_post('test_imap', 'boolean')) {
     }
 }
 
-
 // Handle test mail
 if (rex_post('test_mail', 'boolean')) {
     if ('' == $addon->getConfig('from') || '' == $addon->getConfig('test_address')) {
@@ -152,9 +154,16 @@ if (rex_post('test_mail', 'boolean')) {
             $body .= 'Server: ' . rex::getServerName() . "\n";
             $body .= 'Domain: ' . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '-') . "\r\n";
             $body .= 'Mailer: Symfony Mailer' . "\r\n";
-            $body .= 'Host: ' . $addon->getConfig('host') . "\r\n";
-            $body .= 'Port: ' . $addon->getConfig('port') . "\r\n";
-            $body .= 'Security: ' . ($addon->getConfig('security') ?: 'none') . "\r\n";
+            $body .= 'Transport: ' . $addon->getConfig('transport_type', 'smtp') . "\r\n";
+            
+            if ($addon->getConfig('transport_type') === 'microsoft_graph') {
+                $body .= 'Graph Tenant: ' . $addon->getConfig('graph_tenant_id') . "\r\n";
+                $body .= 'Graph Client: ' . $addon->getConfig('graph_client_id') . "\r\n";
+            } else {
+                $body .= 'Host: ' . $addon->getConfig('host') . "\r\n";
+                $body .= 'Port: ' . $addon->getConfig('port') . "\r\n";
+                $body .= 'Security: ' . ($addon->getConfig('security') ?: 'none') . "\r\n";
+            }
             
             $email->text($body);
             
@@ -171,7 +180,6 @@ if (rex_post('test_mail', 'boolean')) {
     }
 }
 
-
 // Setup config form
 $form = rex_config_form::factory('symfony_mailer');
 
@@ -179,8 +187,22 @@ $form = rex_config_form::factory('symfony_mailer');
 if ($externalConfig) {
     echo rex_view::warning($addon->i18n('config_external'));
 }
-// SMTP Settings Fieldset
-$form->addFieldset('SMTP Settings');
+
+// Transport Type Selection
+$form->addFieldset($addon->i18n('transport_settings'));
+
+$field = $form->addSelectField('transport_type');
+$field->setLabel($addon->i18n('transport_type'));
+$select = $field->getSelect();
+$select->addOption('SMTP', 'smtp');
+$select->addOption('Microsoft Graph', 'microsoft_graph');
+$field->setNotice($addon->i18n('transport_type_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
+// Common Settings Fieldset
+$form->addFieldset($addon->i18n('common_settings'));
 
 $field = $form->addTextField('from');
 $field->setLabel($addon->i18n('sender_email'));
@@ -201,6 +223,9 @@ $field->setLabel($addon->i18n('sender_name'));
 if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
+
+// SMTP Settings Fieldset
+$form->addFieldset($addon->i18n('smtp_settings'));
 
 $field = $form->addTextField('host');
 $field->setLabel($addon->i18n('smtp_host'));
@@ -245,6 +270,31 @@ if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
 
+// Microsoft Graph Settings Fieldset
+$form->addFieldset($addon->i18n('graph_settings'));
+
+$field = $form->addTextField('graph_tenant_id');
+$field->setLabel($addon->i18n('graph_tenant_id'));
+$field->setNotice($addon->i18n('graph_tenant_id_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
+$field = $form->addTextField('graph_client_id');
+$field->setLabel($addon->i18n('graph_client_id'));
+$field->setNotice($addon->i18n('graph_client_id_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
+$field = $form->addTextField('graph_client_secret');
+$field->setLabel($addon->i18n('graph_client_secret'));
+$field->setAttribute('type', 'password');
+$field->setNotice($addon->i18n('graph_client_secret_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 $field = $form->addCheckboxField('debug');
 $field->setLabel($addon->i18n('smtp_debug'));
 $field->addOption($addon->i18n('smtp_debug_enabled'), 1);
@@ -266,7 +316,6 @@ $field->addOption($addon->i18n('archive_enabled'), 1);
 if ($externalConfig) {
     $field->setAttribute('disabled', 'disabled');
 }
-
 
 // IMAP Archive Settings Fieldset
 $imap_available = extension_loaded('imap');
@@ -322,7 +371,6 @@ $field->setLabel($addon->i18n('detour_mode'));
 $field->addOption($addon->i18n('detour_mode_enabled'), 1);
 $field->setNotice($addon->i18n('detour_mode_notice'));
 
-
 // Output form
 echo '<section class="rex-page-section">
     <div class="panel panel-edit">
@@ -344,7 +392,7 @@ echo '</div>
                                 </div>
                                 
                                 <fieldset>
-                                    <legend>' . $addon->i18n('smtp_test') . '</legend>
+                                    <legend>' . $addon->i18n('transport_test') . '</legend>
                                     <div class="form-group">
                                         <button type="submit" name="test_connection" value="1" class="btn btn-block btn-primary">' . $addon->i18n('test_connection') . '</button>
                                     </div>
@@ -373,3 +421,31 @@ echo '
         </div>
     </div>
 </section>';
+
+// Add JavaScript for dynamic form visibility
+echo '<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const transportSelect = document.querySelector("select[name=\'transport_type\']");
+    const smtpFieldset = document.querySelector("fieldset:has(input[name=\'host\'])");
+    const graphFieldset = document.querySelector("fieldset:has(input[name=\'graph_tenant_id\'])");
+    
+    function toggleTransportFields() {
+        if (!transportSelect || !smtpFieldset || !graphFieldset) return;
+        
+        const selectedTransport = transportSelect.value;
+        
+        if (selectedTransport === "microsoft_graph") {
+            smtpFieldset.style.display = "none";
+            graphFieldset.style.display = "block";
+        } else {
+            smtpFieldset.style.display = "block";
+            graphFieldset.style.display = "none";
+        }
+    }
+    
+    if (transportSelect) {
+        transportSelect.addEventListener("change", toggleTransportFields);
+        toggleTransportFields(); // Initial call
+    }
+});
+</script>';
