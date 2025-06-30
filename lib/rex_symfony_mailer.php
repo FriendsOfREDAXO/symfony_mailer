@@ -236,19 +236,22 @@ class RexSymfonyMailer
             
             if ($transportType === 'microsoft_graph') {
                 $graphSettings = array_merge($this->graphSettings, $settings);
-                $transport = new MicrosoftGraphTransport(
+                
+                // Verwende die detaillierte Diagnose
+                $result = MicrosoftGraphTransport::diagnosticTest(
                     $graphSettings['tenant_id'],
                     $graphSettings['client_id'],
                     $graphSettings['client_secret']
                 );
                 
-                $success = $transport->testConnection();
-                
                 return [
-                    'success' => $success,
-                    'message' => $success 
-                        ? rex_i18n::msg('symfony_mailer_test_connection_success') 
-                        : rex_i18n::msg('symfony_mailer_test_connection_error')
+                    'success' => $result['success'],
+                    'message' => $result['message'],
+                    'error_details' => [
+                        'transport' => 'microsoft_graph',
+                        'steps' => $result['steps'],
+                        'hint' => $this->getGraphErrorHint($result)
+                    ]
                 ];
             } else {
                 $transport = Transport::fromDsn($this->buildDsn($settings));
@@ -268,6 +271,48 @@ class RexSymfonyMailer
                 'error_details' => $this->getErrorDetails($e)
             ];
         }
+    }
+
+    /**
+     * Get specific error hints for Microsoft Graph issues
+     */
+    private function getGraphErrorHint(array $diagnosticResult): string
+    {
+        if ($diagnosticResult['success']) {
+            return '';
+        }
+
+        // Analysiere die Schritte für spezifische Hinweise
+        $steps = $diagnosticResult['steps'];
+
+        if (isset($steps['validation']) && $steps['validation']['status'] === 'failed') {
+            return 'Überprüfen Sie die Microsoft Graph Konfiguration im REDAXO Backend.';
+        }
+
+        if (isset($steps['token_request']) && $steps['token_request']['status'] === 'failed') {
+            $httpCode = $steps['token_request']['http_code'] ?? 0;
+            
+            switch ($httpCode) {
+                case 400:
+                    return 'Fehlerhafte Zugangsdaten. Überprüfen Sie Tenant ID, Client ID und Client Secret in der Azure App Registration.';
+                case 401:
+                    return 'Authentifizierung fehlgeschlagen. Stellen Sie sicher, dass die App Registration aktiv ist.';
+                default:
+                    return 'Token-Anfrage fehlgeschlagen. Überprüfen Sie die Azure AD Konfiguration.';
+            }
+        }
+
+        if (isset($steps['graph_api']) && $steps['graph_api']['status'] === 'failed') {
+            $httpCode = $steps['graph_api']['http_code'] ?? 0;
+            
+            if ($httpCode === 403) {
+                return 'Unzureichende Berechtigungen. Gehen Sie in der Azure App Registration zu "API permissions" und erteilen Sie "Admin consent" für "Mail.Send".';
+            }
+            
+            return 'Graph API Zugriff fehlgeschlagen. Überprüfen Sie die App-Berechtigungen.';
+        }
+
+        return 'Unbekannter Microsoft Graph Fehler. Aktivieren Sie Debug-Modus für weitere Details.';
     }
 
     /**
