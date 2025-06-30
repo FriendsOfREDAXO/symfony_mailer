@@ -64,55 +64,35 @@ class MicrosoftGraphTransport extends AbstractTransport
             $this->tenantId
         );
 
-        $postData = [
-            'grant_type' => 'client_credentials',
-            'client_id' => $this->clientId,
-            'client_secret' => $this->clientSecret,
-            'scope' => 'https://graph.microsoft.com/.default'
-        ];
+        // FIXED: Manueller POST-String statt http_build_query()
+        // Grund: http_build_query() scheint auf diesem Server nicht zu funktionieren
+        $postString = 'client_id=' . urlencode($this->clientId) . 
+                     '&client_secret=' . urlencode($this->clientSecret) . 
+                     '&scope=' . urlencode('https://graph.microsoft.com/.default') . 
+                     '&grant_type=client_credentials';
 
-        $ch = curl_init($endpoint);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $endpoint);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postString);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/x-www-form-urlencoded',
-            'Accept: application/json'
-        ]);
-
+        
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         
-        if (curl_error($ch)) {
+        if (curl_errno($ch) || $httpCode >= 400) {
             $curlError = curl_error($ch);
             curl_close($ch);
-            throw new TransportException('CURL Error: ' . $curlError);
+            throw new TransportException("HTTP $httpCode: $response" . ($curlError ? " (CURL: $curlError)" : ""));
         }
         
         curl_close($ch);
-
-        if ($httpCode !== 200) {
-            $errorData = json_decode($response, true);
-            $errorMsg = 'HTTP ' . $httpCode;
-            
-            if (isset($errorData['error_description'])) {
-                $errorMsg .= ': ' . $errorData['error_description'];
-            } elseif (isset($errorData['error'])) {
-                $errorMsg .= ': ' . $errorData['error'];
-            }
-            
-            throw new TransportException($errorMsg);
-        }
 
         $data = json_decode($response, true);
         
         if (!isset($data['access_token'])) {
             throw new TransportException(
-                'Failed to obtain access token from Microsoft Graph: ' . 
-                (isset($data['error']) ? $data['error'] : 'Unknown error')
+                'Failed to obtain access token: ' . ($response ?: 'Unknown error')
             );
         }
 
