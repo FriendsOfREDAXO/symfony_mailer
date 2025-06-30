@@ -15,13 +15,48 @@ function outputTestResult($message, $success = true, $error = null)
     } else {
         $output = '';
         
-        // Wenn ein Hinweis vorhanden ist, zeigen wir diesen zuerst
-        if (isset($error['hint'])) {
-            $output .= rex_escape($error['hint']);
+        // Microsoft Graph spezifische Diagnose-Ausgabe
+        if (isset($error['steps'])) {
+            $output .= '<div class="panel panel-default">
+                <div class="panel-heading"><strong>Microsoft Graph Diagnose</strong></div>
+                <div class="panel-body">';
+            
+            foreach ($error['steps'] as $stepName => $stepInfo) {
+                $status = $stepInfo['status'];
+                $statusIcon = match($status) {
+                    'passed' => '✅',
+                    'failed' => '❌', 
+                    'running' => '⏳',
+                    default => '❔'
+                };
+                
+                $output .= '<div style="margin-bottom: 10px;">
+                    <strong>' . ucfirst(str_replace('_', ' ', $stepName)) . ':</strong> 
+                    ' . $statusIcon . ' ' . rex_escape($stepInfo['message']) . '</div>';
+                
+                // Zusätzliche Details anzeigen
+                if (isset($stepInfo['user_info'])) {
+                    $output .= '<div style="margin-left: 20px; color: #666;">
+                        User: ' . rex_escape($stepInfo['user_info']['displayName'] ?? 'N/A') . ' 
+                        (' . rex_escape($stepInfo['user_info']['userPrincipalName'] ?? 'N/A') . ')
+                    </div>';
+                }
+                
+                if (isset($stepInfo['http_code'])) {
+                    $output .= '<div style="margin-left: 20px; color: #666;">HTTP Code: ' . $stepInfo['http_code'] . '</div>';
+                }
+            }
+            
+            $output .= '</div></div>';
         }
         
-        // Wenn Debug aktiviert ist und es weitere Details gibt, zeigen wir diese an
-        if (isset($error['message']) && rex_addon::get('symfony_mailer')->getConfig('debug')) {
+        // Wenn ein Hinweis vorhanden ist, zeigen wir diesen
+        if (isset($error['hint'])) {
+            $output .= '<div class="alert alert-info"><strong>Lösungshinweis:</strong><br>' . rex_escape($error['hint']) . '</div>';
+        }
+        
+        // Debug-Informationen für SMTP oder wenn Debug aktiviert ist
+        if (isset($error['message']) && (rex_addon::get('symfony_mailer')->getConfig('debug') || !isset($error['steps']))) {
             $output .= '<br><br><strong>' . rex_i18n::msg('symfony_mailer_debug_info') . ':</strong><br>';
             $output .= '<pre class="rex-debug">' . rex_escape($error['message']);
             if (isset($error['dsn'])) {
