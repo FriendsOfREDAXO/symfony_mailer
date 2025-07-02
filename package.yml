@@ -10,6 +10,7 @@ page:
     icon: rex-icon rex-icon-envelope
     subpages:
         config: { title: 'translate:configuration' }
+        queue: { title: 'translate:queue' }
         log: { title: 'translate:logging' }
         help: { title: 'translate:help', subPath: README.md, itemClass: 'pull-right' }
 
@@ -48,3 +49,6 @@ default_config:
     debug: false
     detour_mode: false
     detour_address: ''
+    queue_enabled: false
+    queue_batch_size: 10
+    queue_max_attempts: 3

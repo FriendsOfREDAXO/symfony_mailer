@@ -20,6 +20,17 @@ class rex_yform_action_symfony_mailer extends rex_yform_action_abstract
         $imap_folder = $this->getElement(10); //Optional: IMAP-Ordner
 
         $mail_attachments = $this->getElement(11); // Optional: json String mit Array von Anhangsdaten
+        $queue_options_json = $this->getElement(12); // Optional: Queue-Optionen als JSON
+        
+        // Queue-Optionen verarbeiten
+        $queueOptions = [];
+        if ($queue_options_json) {
+            $queueOptions = json_decode($queue_options_json, true);
+            if (!is_array($queueOptions)) {
+                $this->params['form_error'][] = 'Symfony Mailer Action: Invalid JSON for queue options';
+                return;
+            }
+        }
         
         // Dynamische SMTP Einstellungen
         $smtpSettings = [];
@@ -137,9 +148,13 @@ class rex_yform_action_symfony_mailer extends rex_yform_action_abstract
            }
         }
 
-       // E-Mail senden
-       if (!$mailer->send($email, $smtpSettings, $imap_folder)) {
-            $this->params['form_error'][] = 'Symfony Mailer Action: Email could not be sent. See Logfile for more details.';
+       // E-Mail senden oder in Queue einreihen
+       $result = $mailer->sendOrQueue($email, $smtpSettings, $imap_folder, $queueOptions);
+       if ($result === false) {
+            $this->params['form_error'][] = 'Symfony Mailer Action: Email could not be sent/queued. See Logfile for more details.';
+        } elseif (is_int($result)) {
+            // E-Mail wurde in Queue eingereiht
+            $this->params['form_output'][] = 'Symfony Mailer Action: Email queued successfully with ID: ' . $result;
         }
 
     }
@@ -162,6 +177,6 @@ class rex_yform_action_symfony_mailer extends rex_yform_action_abstract
 
     public function getDescription(): string
     {
-        return 'action|symfony_mailer|from@email.de|to@email.de[,to2@email.de]|cc@email.de[,cc2@email.de]|bcc@email.de[,bcc2@email.de]|Mailsubject|Mailbody###name###|text/html|{"host":"...","port":"...", ...}|IMAP-Folder|[{"type":"file", "path":"/path/to/file.pdf"}, {"type":"data", "data":"...", "contentType":"...", "filename":"..."}]';
+        return 'action|symfony_mailer|from@email.de|to@email.de[,to2@email.de]|cc@email.de[,cc2@email.de]|bcc@email.de[,bcc2@email.de]|Mailsubject|Mailbody###name###|text/html|{"host":"...","port":"...", ...}|IMAP-Folder|[{"type":"file", "path":"/path/to/file.pdf"}, {"type":"data", "data":"...", "contentType":"...", "filename":"..."}]|{"priority":3, "scheduled_at":"2024-01-01 12:00:00", "max_attempts":3}';
     }
 }

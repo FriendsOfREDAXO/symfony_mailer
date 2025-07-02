@@ -30,6 +30,7 @@ class RexSymfonyMailer
     private bool $archive;
     private bool $imapArchive;
     private string $transportType;
+    private bool $queueEnabled;
 
     /**
      * @var array<string, mixed>
@@ -83,6 +84,7 @@ class RexSymfonyMailer
         $this->imapArchive = (bool)($customConfig['imap_archive'] ?? $addon->getConfig('imap_archive', false));
         $this->debug = (bool)($customConfig['debug'] ?? $addon->getConfig('debug', false));
         $this->detourMode = (bool)($customConfig['detour_mode'] ?? $addon->getConfig('detour_mode', false));
+        $this->queueEnabled = (bool)($customConfig['queue_enabled'] ?? $addon->getConfig('queue_enabled', false));
         $this->detourAddress = $customConfig['detour_address'] ?? $addon->getConfig('detour_address', $addon->getConfig('test_address') ?? '');
         $this->transportType = $customConfig['transport_type'] ?? $addon->getConfig('transport_type', 'smtp');
 
@@ -405,6 +407,38 @@ class RexSymfonyMailer
         } catch (TransportExceptionInterface $e) {
              $this->logError('Failed to send email', $e);
             return false;
+        }
+    }
+
+    /**
+     * Queue an email for later sending
+     *
+     * @param Email $email The email to queue
+     * @param array $options Queue options (priority, scheduled_at, max_attempts)
+     * @return int The queue ID
+     */
+    public function queueEmail(Email $email, array $options = []): int
+    {
+        $queue = new MailQueue();
+        return $queue->addEmail($email, $options);
+    }
+
+    /**
+     * Send an email immediately or queue it based on configuration
+     *
+     * @param Email $email The email to send or queue
+     * @param array<string, mixed> $settings Optional settings to override defaults.
+     * @param string $imapFolder Optional folder to override the default imap folder.
+     * @param array $queueOptions Queue options if queuing is enabled
+     *
+     * @return bool|int True if sent immediately, queue ID if queued, false on error
+     */
+    public function sendOrQueue(Email $email, array $settings = [], string $imapFolder = '', array $queueOptions = [])
+    {
+        if ($this->queueEnabled) {
+            return $this->queueEmail($email, $queueOptions);
+        } else {
+            return $this->send($email, $settings, $imapFolder);
         }
     }
 

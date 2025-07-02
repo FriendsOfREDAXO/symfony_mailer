@@ -449,6 +449,31 @@ $field->setLabel($addon->i18n('detour_mode'));
 $field->addOption($addon->i18n('detour_mode_enabled'), 1);
 $field->setNotice($addon->i18n('detour_mode_notice'));
 
+// Mail Queue Settings Fieldset
+$form->addFieldset($addon->i18n('queue'));
+
+$field = $form->addCheckboxField('queue_enabled');
+$field->setLabel($addon->i18n('queue_enabled'));
+$field->addOption('1', 1);
+$field->setNotice($addon->i18n('queue_enabled_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
+$field = $form->addTextField('queue_batch_size');
+$field->setLabel($addon->i18n('queue_batch_size'));
+$field->setNotice($addon->i18n('queue_batch_size_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
+$field = $form->addTextField('queue_max_attempts');
+$field->setLabel($addon->i18n('queue_max_attempts'));
+$field->setNotice($addon->i18n('queue_max_attempts_notice'));
+if ($externalConfig) {
+    $field->setAttribute('disabled', 'disabled');
+}
+
 // Output form
 echo '<section class="rex-page-section">
     <div class="panel panel-edit">
