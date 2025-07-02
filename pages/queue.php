@@ -155,8 +155,7 @@ $stats = $queue->getStats();
 <?php
 
 // Get queue items
-$sql = rex_sql::factory();
-$sql->setQuery('
+$query = '
     SELECT * FROM ' . rex::getTable('symfony_mailer_queue') . ' 
     ORDER BY 
         CASE WHEN status = "processing" THEN 1
@@ -166,9 +165,9 @@ $sql->setQuery('
         priority DESC, 
         created_at DESC 
     LIMIT 100
-');
+';
 
-$list = rex_list::factory($sql);
+$list = rex_list::factory($query);
 $list->addTableAttribute('class', 'table-striped table-hover');
 
 $list->removeColumn('id');
