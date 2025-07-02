@@ -70,6 +70,7 @@ Mit diesem AddOn kannst du beide Dienste als Versand-Backend für REDAXO nutzen 
 | **Mailjet/Mailchimp API**             | Versand über die jeweilige API, keine SMTP-Server nötig.                                                                                          |
 | **E-Mail-Archivierung**               | Optionale Speicherung versendeter E-Mails als `.eml`-Dateien im Dateisystem, sortiert nach Jahren und Monaten.                                     |
 | **IMAP-Archivierung**                | Optionale Ablage der Mails in einem konfigurierbaren IMAP-Ordner. Dynamische IMAP-Ordner pro E-Mail sind möglich. Die Funktion steht zur Verfügung wenn die IMAP-Erweiterung installiert ist in PHP.|
+| **Mail Queue**                        | Zentrale E-Mail-Warteschlange für zeitversetzten Versand und Batch-Verarbeitung. Ideal für Newsletter und geplante E-Mails.                      |
 | **Logging**                            | Protokolliert versendete E-Mails (Status, Absender, Empfänger, Betreff, Fehlermeldungen) in einer Logdatei.                                       |
 | **Testverbindung**                    | Überprüft die Transport-Verbindung (SMTP oder Microsoft Graph), auch mit eigenen Einstellungen.                                                  |
 | **Detour-Modus**                      | Leitet alle E-Mails an eine konfigurierbare Testadresse um, nützlich für Testumgebungen.                                                        |
@@ -322,6 +323,121 @@ $yform->setActionField(
 );
 ```
 
+## Mail Queue - Zentrale E-Mail-Warteschlange
+
+Das AddOn bietet eine zentrale Mail Queue für den zeitversetzten Versand von E-Mails. Dies ist ideal für Newsletter, geplante E-Mails oder die Batch-Verarbeitung großer Mengen.
+
+### Aktivierung der Queue
+
+```php
+// In der Konfiguration oder custom_config.yml
+queue_enabled: true
+queue_batch_size: 10
+queue_max_attempts: 3
+```
+
+### Verwendung der Queue
+
+#### E-Mail in Queue einreihen
+
+```php
+use FriendsOfRedaxo\SymfonyMailer\RexSymfonyMailer;
+
+$mailer = new RexSymfonyMailer();
+$email = $mailer->createEmail();
+$email->to('empfaenger@example.com')
+      ->subject('Geplante E-Mail')
+      ->text('Diese E-Mail wird später gesendet.');
+
+// E-Mail für sofortigen Versand in Queue einreihen
+$queueId = $mailer->queueEmail($email, [
+    'priority' => 3, // 1=niedrig, 3=normal, 5=hoch
+    'max_attempts' => 3
+]);
+
+// E-Mail für späteren Versand planen
+$queueId = $mailer->queueEmail($email, [
+    'scheduled_at' => new DateTime('2024-12-31 10:00:00'),
+    'priority' => 5
+]);
+```
+
+#### Automatisches Queuing basierend auf Konfiguration
+
+```php
+// Sendet sofort oder reiht in Queue ein, je nach Konfiguration
+$result = $mailer->sendOrQueue($email);
+
+if (is_int($result)) {
+    echo "E-Mail in Queue eingereiht mit ID: " . $result;
+} elseif ($result === true) {
+    echo "E-Mail sofort gesendet";
+} else {
+    echo "Fehler beim Senden/Einreihen";
+}
+```
+
+#### YForm Action mit Queue-Optionen
+
+```
+action|symfony_mailer|from@example.com|to@example.com|||Betreff|Inhalt|html||INBOX.Sent||{"priority":5,"scheduled_at":"2024-12-31 10:00:00"}
+```
+
+### Queue-Verarbeitung
+
+#### Über die Admin-Oberfläche
+- **Backend → Mailer → Mail Queue**
+- Statistiken einsehen
+- Batch verarbeiten
+- E-Mails verwalten (wiederholen, abbrechen, löschen)
+
+#### Über Cron-Job
+
+```bash
+# Alle 5 Minuten Queue verarbeiten
+*/5 * * * * php /pfad/zu/redaxo/redaxo/src/addons/symfony_mailer/console.php symfony_mailer:process-queue
+
+# Mit eigener Batch-Größe
+*/5 * * * * php /pfad/zu/redaxo/redaxo/src/addons/symfony_mailer/console.php symfony_mailer:process-queue --batch-size=20
+```
+
+#### Manuell über PHP
+
+```php
+use FriendsOfRedaxo\SymfonyMailer\MailQueue;
+
+$queue = new MailQueue();
+
+// 10 E-Mails verarbeiten
+$result = $queue->processBatch(10);
+echo "Verarbeitet: " . $result['processed'];
+
+// Statistiken abrufen
+$stats = $queue->getStats();
+echo "Wartend: " . $stats['pending'];
+echo "Gesendet: " . $stats['sent'];
+echo "Fehlgeschlagen: " . $stats['failed'];
+
+// Alte E-Mails aufräumen (älter als 30 Tage)
+$cleaned = $queue->cleanup(30);
+```
+
+### Queue-Status
+
+- **pending**: Wartet auf Verarbeitung
+- **processing**: Wird gerade verarbeitet  
+- **sent**: Erfolgreich gesendet
+- **failed**: Fehlgeschlagen (nach max. Versuchen)
+- **cancelled**: Abgebrochen
+
+### Vorteile der Mail Queue
+
+- **Performanz**: Keine Wartezeiten beim Formular-Submit
+- **Zuverlässigkeit**: Automatische Wiederholungsversuche bei Fehlern
+- **Planung**: E-Mails zu bestimmten Zeiten versenden
+- **Batch-Verarbeitung**: Große E-Mail-Mengen effizient verarbeiten
+- **Überwachung**: Vollständige Transparenz über Versandstatus
+
 ## Konfiguration über `custom_config.yml`
 
 ### Microsoft Graph Beispiel
@@ -391,6 +507,31 @@ imap_archive: false
 debug: true
 logging: 2
 detour_mode: false
+```
+
+### Queue-Konfiguration Beispiel
+
+```yaml
+# Konfiguration mit aktivierter Mail Queue
+transport_type: 'smtp'  # oder 'microsoft_graph', 'mailjet', 'mailchimp'
+from: "noreply@yourcompany.com"
+name: "Your Company"
+
+# Standard SMTP-Einstellungen
+host: "smtp.yourcompany.com"
+port: 587
+security: "tls"
+auth: true
+username: "your-smtp-username"
+password: "your-smtp-password"
+
+# Queue-spezifische Einstellungen
+queue_enabled: true          # Queue aktivieren
+queue_batch_size: 20         # 20 E-Mails pro Batch verarbeiten
+queue_max_attempts: 5        # 5 Versuche pro E-Mail
+
+# Optional: Cron-Schlüssel für sicheren Web-Zugriff
+cron_key: "your-secure-random-key-here"
 ```
 
 ## Detour-Modus
