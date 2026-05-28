@@ -1,5 +1,5 @@
 package: symfony_mailer
-version: '1.0.0-beta6'
+version: '1.0.0-beta7'
 author: Friends of REDAXO 
 supportpage: https://github.com/FriendsOfREDAXO/symfony_mailer/
 
